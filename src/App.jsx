@@ -19,6 +19,12 @@ const PROBLEMS = [
 
 const SECTORS = ["A","B","C","D","E","F","G","H"];
 
+// ── MACHINE CONSTANTS ─────────────────────────────────────────────────────────
+const PLANTS  = ["D","K"];
+const LINES   = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N"];
+const MACHINES = Array.from({length:15},(_,i)=>String(i+1));
+const PRESSES = ["L","R"];
+
 const emptyProblemDetail = (pid) => {
   if (pid.startsWith("MOR"))      return { shimAction:"tambah", shimJumlah:"", shimSectors:[] };
   if (pid.startsWith("OVERFLOW")) return { shimAction:"tambah", shimJumlah:"", shimLokasi:"" };
@@ -31,7 +37,9 @@ const emptyForm = () => ({
   moldSize:"", moldType:"segmented",
   date: new Date().toISOString().slice(0,10),
   jamMulai:"", jamSelesai:"",
-  technician:"", problems:[], problemDetails:{}, notes:"",
+  technician:"",
+  plant:"", line:"", machine:"", press:"",
+  problems:[], problemDetails:{}, notes:"",
 });
 
 const CSS = `
@@ -368,11 +376,31 @@ export default function App() {
 
   const updateDetail = (pid,detail) => setForm(f=>({...f,problemDetails:{...f.problemDetails,[pid]:detail}}));
 
+  const machineCode = (f) => f.plant && f.line && f.machine && f.press ? `${f.plant}-${f.line}${f.machine}${f.press}` : "";
+
   const submitForm = async () => {
     if(!form.moldSize.trim()||!form.technician.trim()||form.problems.length===0){
       showToast("Lengkapi: size mold, nama teknisi, dan minimal 1 problem.","error"); return;
     }
-    const payload={mold_size:form.moldSize.trim().toUpperCase(),mold_type:form.moldType,date:form.date,jam_mulai:form.jamMulai,jam_selesai:form.jamSelesai,technician:form.technician.trim(),problems:form.problems,problem_details:form.problemDetails,notes:form.notes};
+    if(!form.plant||!form.line||!form.machine||!form.press){
+      showToast("Lengkapi: plant, line, mesin, dan press.","error"); return;
+    }
+    const payload={
+      mold_size:form.moldSize.trim().toUpperCase(),
+      mold_type:form.moldType,
+      date:form.date,
+      jam_mulai:form.jamMulai,
+      jam_selesai:form.jamSelesai,
+      technician:form.technician.trim(),
+      machine_code:machineCode(form),
+      plant:form.plant,
+      line:form.line,
+      machine:form.machine,
+      press:form.press,
+      problems:form.problems,
+      problem_details:form.problemDetails,
+      notes:form.notes,
+    };
     if(editId){
       const{error}=await supabase.from("repair_records").update(payload).eq("id",editId);
       if(error){showToast("Gagal update: "+error.message,"error");return;}
@@ -386,7 +414,7 @@ export default function App() {
   };
 
   const startEdit = (rec) => {
-    setForm({moldSize:rec.mold_size,moldType:rec.mold_type,date:rec.date,jamMulai:rec.jam_mulai||"",jamSelesai:rec.jam_selesai||"",technician:rec.technician,problems:rec.problems||[],problemDetails:rec.problem_details||{},notes:rec.notes||""});
+    setForm({moldSize:rec.mold_size,moldType:rec.mold_type,date:rec.date,jamMulai:rec.jam_mulai||"",jamSelesai:rec.jam_selesai||"",technician:rec.technician,plant:rec.plant||"",line:rec.line||"",machine:rec.machine||"",press:rec.press||"",problems:rec.problems||[],problemDetails:rec.problem_details||{},notes:rec.notes||""});
     setEditId(rec.id);setPage("entry");
   };
 
@@ -530,6 +558,7 @@ export default function App() {
                       <div><div className="record-size">{r.mold_size}</div><div className="record-type">{r.mold_type==="segmented"?"Segmented":"Two Piece"}</div></div>
                       <div style={{ fontSize:11,color:"#999",textAlign:"right" }}><div>{r.date}</div><div>{r.jam_mulai&&r.jam_selesai?`${r.jam_mulai}–${r.jam_selesai}`:""}</div></div>
                     </div>
+                    {r.machine_code&&<div style={{ fontSize:12,fontWeight:600,color:"#1D9E75",marginBottom:6 }}><i className="ti ti-robot" style={{ fontSize:13,marginRight:4 }}></i>{r.machine_code}</div>}
                     <DetailSummary rec={{...r,problemDetails:r.problem_details,problems:r.problems||[]}}/>
                     <div className="record-meta"><i className="ti ti-user" style={{ fontSize:12,marginRight:4 }}></i>{r.technician}</div>
                   </div>
@@ -574,6 +603,53 @@ export default function App() {
                       if(diff>0) return <div style={{ fontSize:11,color:"#1D9E75",marginTop:4,fontWeight:500 }}>{Math.floor(diff/60)>0?`${Math.floor(diff/60)} jam `:""}{diff%60>0?`${diff%60} menit`:""}</div>;
                     })()}
                   </div>
+                </div>
+
+                {/* MESIN SELECTOR */}
+                <div className="card">
+                  <div className="card-title">Mesin yang dikerjakan *</div>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:10 }}>
+                    <div className="form-group">
+                      <label className="form-label">Plant *</label>
+                      <select className="form-input" value={form.plant} onChange={e=>setForm(f=>({...f,plant:e.target.value,line:"",machine:"",press:""}))}>
+                        <option value="">— Pilih —</option>
+                        {PLANTS.map(p=><option key={p} value={p}>Plant {p}</option>)}
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Line *</label>
+                      <select className="form-input" value={form.line} onChange={e=>setForm(f=>({...f,line:e.target.value,machine:"",press:""}))} disabled={!form.plant}>
+                        <option value="">— Pilih —</option>
+                        {LINES.map(l=><option key={l} value={l}>Line {l}</option>)}
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Mesin *</label>
+                      <select className="form-input" value={form.machine} onChange={e=>setForm(f=>({...f,machine:e.target.value,press:""}))} disabled={!form.line}>
+                        <option value="">— Pilih —</option>
+                        {MACHINES.map(m=><option key={m} value={m}>Mesin {m}</option>)}
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Press *</label>
+                      <div style={{ display:"flex", gap:8 }}>
+                        {PRESSES.map(p=>(
+                          <button key={p} className={`type-btn${form.press===p?" active":""}`} style={{ flex:1 }} onClick={()=>setForm(f=>({...f,press:p}))} disabled={!form.machine}>
+                            {p === "L" ? "Left (L)" : "Right (R)"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  {form.plant&&form.line&&form.machine&&form.press&&(
+                    <div style={{ background:"#E1F5EE", borderRadius:8, padding:"10px 14px", display:"flex", alignItems:"center", gap:8 }}>
+                      <i className="ti ti-robot" style={{ fontSize:18, color:"#1D9E75" }}></i>
+                      <div>
+                        <div style={{ fontSize:10, color:"#666", marginBottom:2 }}>Kode mesin</div>
+                        <div style={{ fontSize:18, fontWeight:700, color:"#085041", letterSpacing:1 }}>{machineCode(form)}</div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="card">
@@ -643,6 +719,7 @@ export default function App() {
                       <div><div className="record-size">{r.mold_size}</div><div className="record-type">{r.mold_type==="segmented"?"Segmented":"Two Piece"}</div></div>
                       <div style={{ fontSize:11,color:"#999",textAlign:"right" }}><div>{r.date}</div><div>{r.jam_mulai&&r.jam_selesai?`${r.jam_mulai}–${r.jam_selesai}`:""}</div></div>
                     </div>
+                    {r.machine_code&&<div style={{ fontSize:12,fontWeight:600,color:"#1D9E75",marginBottom:6 }}><i className="ti ti-robot" style={{ fontSize:13,marginRight:4 }}></i>{r.machine_code}</div>}
                     <div style={{ marginBottom:6 }}><DetailSummary rec={{...r,problemDetails:r.problem_details,problems:r.problems||[]}}/></div>
                     <div className="record-meta" style={{ marginBottom:8 }}><i className="ti ti-user" style={{ fontSize:12,marginRight:4 }}></i>{r.technician}</div>
                     <div className="record-actions">
@@ -672,6 +749,16 @@ export default function App() {
                     <div className="stat-card"><div className="stat-label">Jam mulai</div><div style={{ fontSize:13,fontWeight:600,color:"#111" }}>{detailRec.jam_mulai||"-"}</div></div>
                     <div className="stat-card"><div className="stat-label">Jam selesai</div><div style={{ fontSize:13,fontWeight:600,color:"#111" }}>{detailRec.jam_selesai||"-"}</div></div>
                   </div>
+                  {detailRec.machine_code&&(
+                    <div style={{ background:"#E1F5EE", borderRadius:8, padding:"10px 14px", marginBottom:12, display:"flex", alignItems:"center", gap:10 }}>
+                      <i className="ti ti-robot" style={{ fontSize:22, color:"#1D9E75" }}></i>
+                      <div>
+                        <div style={{ fontSize:10, color:"#666", marginBottom:2 }}>Kode mesin</div>
+                        <div style={{ fontSize:20, fontWeight:700, color:"#085041", letterSpacing:1 }}>{detailRec.machine_code}</div>
+                        <div style={{ fontSize:11, color:"#666" }}>Plant {detailRec.plant} · Line {detailRec.line} · Mesin {detailRec.machine} · Press {detailRec.press}</div>
+                      </div>
+                    </div>
+                  )}
                   <div style={{ fontSize:11,color:"#999",fontWeight:600,marginBottom:8 }}>DETAIL TINDAKAN</div>
                   {(detailRec.problems||[]).map(pid=>{
                     const det=(detailRec.problem_details||{})[pid];
