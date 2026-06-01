@@ -792,7 +792,7 @@ export default function App() {
   // build nav items based on role
   const navItems = [
     ...(canDashboard(role)   ? [["dashboard","ti-layout-dashboard","Dashboard"]] : []),
-    ...(canEntry(role)       ? [["entry","ti-plus","Entry"]] : []),
+    ...(canEntry(role)       ? [["entry","ti-plus","Action Problem"]] : []),
     ...(canDatabase(role)    ? [["database","ti-database","Database"]] : []),
     ...(canPersiapan(role)   ? [["persiapan","ti-package","Persiapan"]] : []),
     ...(canQCGate(role)      ? [["qcgate","ti-clipboard-check","QC Gate"]] : []),
@@ -856,7 +856,7 @@ export default function App() {
               <div style={{ marginLeft:8 }}>
                 <div className="topbar-title">
                   {page==="dashboard"&&"Dashboard"}
-                  {page==="entry"&&(editId?"Edit Record":"Entry Perbaikan")}
+                  {page==="entry"&&(editId?"Edit Record":"Action Problem")}
                   {page==="database"&&"Database Record"}
                   {page==="detail"&&"Detail Record"}
                   {page==="users"&&"Kelola User"}
