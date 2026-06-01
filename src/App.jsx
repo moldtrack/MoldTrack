@@ -19,7 +19,9 @@ const PROBLEMS = [
 const SECTORS  = ["A","B","C","D","E","F","G","H"];
 const PLANTS   = ["D","K"];
 const LINES    = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N"];
-const MACHINES = Array.from({length:15},(_,i)=>String(i+1).padStart(2,"0"));
+const MACHINES_D = Array.from({length:15},(_,i)=>String(i+1).padStart(2,"0"));   // 01-15
+const MACHINES_K = Array.from({length:10},(_,i)=>String(i+21).padStart(2,"0"));  // 21-30
+const getMachines = (plant) => plant==="K" ? MACHINES_K : MACHINES_D;
 const PRESSES  = ["L","R"];
 const ROLES    = ["teknisi","persiapan","qcgate","analyst","adh","dh","admin"];
 
@@ -987,7 +989,7 @@ export default function App() {
                   <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10 }}>
                     <div className="form-group">
                       <label className="form-label">Plant *</label>
-                      <select className="form-input" value={form.plant} onChange={e=>setForm(f=>({...f,plant:e.target.value,line:"",machine:"",press:""}))}>
+                      <select className="form-input" value={form.plant} onChange={e=>setForm(f=>({...f,plant:e.target.value,line:"",machine:"",press:[]}))}>
                         <option value="">— Pilih —</option>
                         {PLANTS.map(p=><option key={p} value={p}>Plant {p}</option>)}
                       </select>
@@ -1003,7 +1005,7 @@ export default function App() {
                       <label className="form-label">Mesin *</label>
                       <select className="form-input" value={form.machine} onChange={e=>setForm(f=>({...f,machine:e.target.value,press:""}))} disabled={!form.line}>
                         <option value="">— Pilih —</option>
-                        {MACHINES.map(m=><option key={m} value={m}>Mesin {m}</option>)}
+                        {getMachines(form.plant).map(m=><option key={m} value={m}>Mesin {m}</option>)}
                       </select>
                     </div>
                     <div className="form-group">
