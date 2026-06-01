@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { createClient } from "@supabase/supabase-js";
+import * as XLSX from "xlsx";
 
 const SUPABASE_URL = "https://jqyehnohnwlvjonciyiw.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpxeWVobm9obndsdmpvbmNpeWl3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxNjQ1NzcsImV4cCI6MjA5NTc0MDU3N30.CBl41ugxddq44hqC2lKc0LUoR0PgMwSoZbQPaGtvI48";
@@ -21,6 +22,95 @@ const LINES    = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N"];
 const MACHINES = Array.from({length:15},(_,i)=>String(i+1));
 const PRESSES  = ["L","R"];
 const ROLES    = ["teknisi","analyst","adh","dh","admin"];
+
+// ── EXPORT TO EXCEL ───────────────────────────────────────────────────────────
+const exportToExcel = (records) => {
+  const getProblemLabel = (pid) => PROBLEMS.find(p=>p.id===pid)?.label || pid;
+
+  const calcDuration = (start, end) => {
+    if (!start || !end) return "";
+    const [h1,m1] = start.split(":").map(Number);
+    const [h2,m2] = end.split(":").map(Number);
+    const diff = (h2*60+m2) - (h1*60+m1);
+    return diff > 0 ? diff : "";
+  };
+
+  const getTindakan = (problems, problemDetails) => {
+    const parts = [];
+    (problems||[]).forEach(pid => {
+      const det = (problemDetails||{})[pid];
+      if (!det) return;
+      const lbl = getProblemLabel(pid);
+      const isMOR = pid.startsWith("MOR");
+      const isOverflow = pid.startsWith("OVERFLOW");
+      const isOS = pid === "OS";
+      const isOOR = pid === "OOR";
+      if ((isMOR||isOverflow||isOS) && det.shimJumlah) {
+        const lokasi = isMOR && det.shimSectors?.length>0
+          ? `Sektor ${det.shimSectors.join(",")}`
+          : det.shimLokasi || "";
+        parts.push(`${lbl}: Shim ${det.shimAction} ${det.shimJumlah} lbr${lokasi?` (${lokasi})`:""}` );
+      }
+      if (isOOR && det.oorSectors?.length>0) {
+        const tipe = det.oorType === "segmented" ? "Segmented" : "Two Piece";
+        parts.push(`${lbl}: ${tipe} - Sektor ${det.oorSectors.join(",")}`);
+      }
+    });
+    return parts.join(" | ");
+  };
+
+  const rows = records.map((r, i) => ({
+    "No":             i + 1,
+    "Tanggal":        r.date || "",
+    "Size Mold":      r.mold_size || "",
+    "Tipe Mold":      r.mold_type === "segmented" ? "Segmented" : "Two Piece",
+    "Kode Mesin":     r.machine_code || "",
+    "Plant":          r.plant || "",
+    "Line":           r.line || "",
+    "Mesin":          r.machine || "",
+    "Press":          r.press || "",
+    "Jenis Problem":  (r.problems||[]).map(getProblemLabel).join(" | "),
+    "Detail Tindakan":getTindakan(r.problems, r.problem_details),
+    "Teknisi":        r.technician || "",
+    "Jam Mulai":      r.jam_mulai || "",
+    "Jam Selesai":    r.jam_selesai || "",
+    "Durasi (menit)": calcDuration(r.jam_mulai, r.jam_selesai),
+    "Catatan":        r.notes || "",
+  }));
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(rows);
+
+  // Set column widths
+  ws["!cols"] = [
+    {wch:5},   // No
+    {wch:12},  // Tanggal
+    {wch:14},  // Size Mold
+    {wch:12},  // Tipe Mold
+    {wch:12},  // Kode Mesin
+    {wch:8},   // Plant
+    {wch:8},   // Line
+    {wch:8},   // Mesin
+    {wch:8},   // Press
+    {wch:30},  // Jenis Problem
+    {wch:40},  // Detail Tindakan
+    {wch:16},  // Teknisi
+    {wch:10},  // Jam Mulai
+    {wch:10},  // Jam Selesai
+    {wch:14},  // Durasi
+    {wch:40},  // Catatan
+  ];
+
+  // Add as Excel Table for PivotTable compatibility
+  const lastRow = rows.length + 1;
+  const lastCol = "P";
+  ws["!autofilter"] = { ref: `A1:${lastCol}${lastRow}` };
+
+  XLSX.utils.book_append_sheet(wb, ws, "Data Perbaikan");
+
+  const date = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, `MoldTrack_${date}.xlsx`);
+};
 
 // role permissions
 const canDashboard = (r) => ["analyst","adh","dh","admin"].includes(r);
@@ -896,7 +986,10 @@ export default function App() {
                     {knownTechs.map(t=><option key={t}>{t}</option>)}
                   </select>
                   <button className="btn-primary" style={{ width:"auto",padding:"8px 14px",margin:0,flexShrink:0 }} onClick={()=>navTo("entry")}>
-                    <i className="ti ti-plus"></i>
+                    + Entry
+                  </button>
+                  <button style={{ padding:"8px 14px",borderRadius:8,border:"1.5px solid #1D9E75",background:"#E1F5EE",color:"#085041",fontSize:12,fontWeight:600,cursor:"pointer",flexShrink:0,whiteSpace:"nowrap" }} onClick={()=>exportToExcel(records)}>
+                    ⬇ Excel
                   </button>
                 </div>
                 <div style={{ fontSize:12,color:"#999",marginBottom:10 }}>{filtered.length} record ditemukan</div>
