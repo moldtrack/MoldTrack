@@ -685,8 +685,8 @@ export default function App() {
               </div>
             </div>
             <div style={{ display:"flex",alignItems:"center",gap:8 }}>
-              <button className="btn-sm" onClick={loadRecords} title="Refresh"><i className="ti ti-refresh"></i></button>
-              <button className="btn-sm" onClick={handleLogout} title="Keluar" style={{ color:"#E24B4A",borderColor:"#E24B4A" }}><i className="ti ti-logout"></i></button>
+              <button className="btn-sm" onClick={loadRecords} style={{ fontSize:11 }}>↻ Refresh</button>
+              <button className="btn-sm" onClick={handleLogout} style={{ color:"#E24B4A",borderColor:"#E24B4A",fontSize:11 }}>Keluar</button>
             </div>
           </div>
 
