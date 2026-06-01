@@ -796,6 +796,10 @@ export default function App() {
     ...(canDatabase(role)    ? [["database","ti-database","Database"]] : []),
     ...(canPersiapan(role)   ? [["persiapan","ti-package","Persiapan"]] : []),
     ...(canQCGate(role)      ? [["qcgate","ti-clipboard-check","QC Gate"]] : []),
+    ...(canDashboard(role)||canQCGate(role)||canPersiapan(role) ? [
+      ["rakit","ti-tools","Rakit Mold"],
+      ["naik","ti-arrow-up","Naik Mold"],
+    ] : []),
     ...(canManageUsers(role) ? [["users","ti-users","Users"]] : []),
   ];
 
@@ -862,6 +866,8 @@ export default function App() {
                   {page==="users"&&"Kelola User"}
                   {page==="persiapan"&&"Persiapan Mold"}
                   {page==="qcgate"&&"QC Gate"}
+                  {page==="rakit"&&"Rakit Mold"}
+                  {page==="naik"&&"Naik Mold"}
                 </div>
                 <div className="topbar-sub">{currentUser.full_name} · <RoleBadge role={role} /></div>
               </div>
@@ -1483,6 +1489,26 @@ export default function App() {
                     })()}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* RAKIT MOLD - Under Development */}
+            {page==="rakit"&&(
+              <div style={{ display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:400,gap:16 }}>
+                <div style={{ fontSize:56 }}>🔧</div>
+                <div style={{ fontSize:18,fontWeight:700,color:"#111" }}>Rakit Mold</div>
+                <div style={{ background:"#FEF3C7",color:"#92400E",padding:"8px 20px",borderRadius:20,fontSize:13,fontWeight:600 }}>🚧 Under Development</div>
+                <div style={{ fontSize:13,color:"#999",textAlign:"center",maxWidth:280 }}>Fitur ini sedang dalam tahap pengembangan. Segera hadir!</div>
+              </div>
+            )}
+
+            {/* NAIK MOLD - Under Development */}
+            {page==="naik"&&(
+              <div style={{ display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:400,gap:16 }}>
+                <div style={{ fontSize:56 }}>⬆️</div>
+                <div style={{ fontSize:18,fontWeight:700,color:"#111" }}>Naik Mold</div>
+                <div style={{ background:"#FEF3C7",color:"#92400E",padding:"8px 20px",borderRadius:20,fontSize:13,fontWeight:600 }}>🚧 Under Development</div>
+                <div style={{ fontSize:13,color:"#999",textAlign:"center",maxWidth:280 }}>Fitur ini sedang dalam tahap pengembangan. Segera hadir!</div>
               </div>
             )}
 
