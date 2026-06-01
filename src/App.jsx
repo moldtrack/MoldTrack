@@ -19,7 +19,7 @@ const PROBLEMS = [
 const SECTORS  = ["A","B","C","D","E","F","G","H"];
 const PLANTS   = ["D","K"];
 const LINES    = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N"];
-const MACHINES = Array.from({length:15},(_,i)=>String(i+1));
+const MACHINES = Array.from({length:15},(_,i)=>String(i+1).padStart(2,"0"));
 const PRESSES  = ["L","R"];
 const ROLES    = ["teknisi","analyst","adh","dh","admin"];
 
@@ -68,7 +68,7 @@ const exportToExcel = (records) => {
     "Plant":          r.plant || "",
     "Line":           r.line || "",
     "Mesin":          r.machine || "",
-    "Press":          r.press || "",
+    "Press":          Array.isArray(r.press) ? r.press.join(" & ") : (r.press || ""),
     "Jenis Problem":  (r.problems||[]).map(getProblemLabel).join(" | "),
     "Detail Tindakan":getTindakan(r.problems, r.problem_details),
     "Teknisi":        r.technician || "",
@@ -131,7 +131,7 @@ const emptyForm = () => ({
   date:new Date().toISOString().slice(0,10),
   jamMulai:"", jamSelesai:"",
   technician:"",
-  plant:"", line:"", machine:"", press:"",
+  plant:"", line:"", machine:"", press:[],
   problems:[], problemDetails:{}, notes:"",
 });
 
@@ -631,7 +631,11 @@ export default function App() {
 
   const knownSizes = useMemo(()=>[...new Set(records.map(r=>r.mold_size))].sort(),[records]);
   const knownTechs = useMemo(()=>[...new Set(records.map(r=>r.technician))].sort(),[records]);
-  const machineCode = (f) => f.plant&&f.line&&f.machine&&f.press ? `${f.plant}-${f.line}${f.machine}${f.press}` : "";
+  const machineCode = (f) => {
+    if (!f.plant||!f.line||!f.machine||!f.press?.length) return "";
+    const pressStr = f.press.sort().join("&");
+    return `${f.plant}-${f.line}${f.machine}${pressStr}`;
+  };
 
   const toggleProblem = (pid) => {
     setForm(f=>{
@@ -648,7 +652,7 @@ export default function App() {
     if(!form.moldSize.trim()||!form.technician.trim()||form.problems.length===0){
       showToast("Lengkapi: size mold, nama teknisi, dan minimal 1 problem.","error"); return;
     }
-    if(!form.plant||!form.line||!form.machine||!form.press){
+    if(!form.plant||!form.line||!form.machine||!form.press?.length){
       showToast("Lengkapi: plant, line, mesin, dan press.","error"); return;
     }
     const payload={
@@ -672,7 +676,8 @@ export default function App() {
   };
 
   const startEdit = (rec) => {
-    setForm({moldSize:rec.mold_size,moldType:rec.mold_type,date:rec.date,jamMulai:rec.jam_mulai||"",jamSelesai:rec.jam_selesai||"",technician:rec.technician,plant:rec.plant||"",line:rec.line||"",machine:rec.machine||"",press:rec.press||"",problems:rec.problems||[],problemDetails:rec.problem_details||{},notes:rec.notes||""});
+    const pressVal = Array.isArray(rec.press) ? rec.press : (rec.press ? [rec.press] : []);
+    setForm({moldSize:rec.mold_size,moldType:rec.mold_type,date:rec.date,jamMulai:rec.jam_mulai||"",jamSelesai:rec.jam_selesai||"",technician:rec.technician,plant:rec.plant||"",line:rec.line||"",machine:rec.machine||"",press:pressVal,problems:rec.problems||[],problemDetails:rec.problem_details||{},notes:rec.notes||""});
     setEditId(rec.id);setPage("entry");
   };
 
@@ -909,14 +914,26 @@ export default function App() {
                       </select>
                     </div>
                     <div className="form-group">
-                      <label className="form-label">Press *</label>
+                      <label className="form-label">Press * <span style={{ fontSize:10,color:"#999",fontWeight:400 }}>(bisa pilih keduanya)</span></label>
                       <div style={{ display:"flex",gap:8 }}>
-                        {PRESSES.map(p=>(
-                          <button key={p} className={`type-btn${form.press===p?" active":""}`} style={{ flex:1 }} onClick={()=>setForm(f=>({...f,press:p}))} disabled={!form.machine}>
-                            {p==="L"?"Left (L)":"Right (R)"}
-                          </button>
-                        ))}
+                        {PRESSES.map(p=>{
+                          const selected = (form.press||[]).includes(p);
+                          const togglePress = () => {
+                            const cur = form.press||[];
+                            setForm(f=>({...f, press: cur.includes(p) ? cur.filter(x=>x!==p) : [...cur,p]}));
+                          };
+                          return (
+                            <button key={p} className={`type-btn${selected?" active":""}`} style={{ flex:1 }} onClick={togglePress} disabled={!form.machine}>
+                              {p==="L"?"◀ Left (L)":"Right (R) ▶"}
+                            </button>
+                          );
+                        })}
                       </div>
+                      {(form.press||[]).length>0&&(
+                        <div style={{ marginTop:6,fontSize:11,color:"#1D9E75",fontWeight:500 }}>
+                          Dipilih: {form.press.join(" & ")}
+                        </div>
+                      )}
                     </div>
                   </div>
                   {machineCode(form)&&(
