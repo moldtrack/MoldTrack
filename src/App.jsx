@@ -21,7 +21,7 @@ const PLANTS   = ["D","K"];
 const LINES    = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N"];
 const MACHINES = Array.from({length:15},(_,i)=>String(i+1).padStart(2,"0"));
 const PRESSES  = ["L","R"];
-const ROLES    = ["teknisi","analyst","adh","dh","admin"];
+const ROLES    = ["teknisi","persiapan","analyst","adh","dh","admin"];
 
 // ── EXPORT TO EXCEL ───────────────────────────────────────────────────────────
 const exportToExcel = (records) => {
@@ -113,8 +113,10 @@ const exportToExcel = (records) => {
 };
 
 // role permissions
-const canDashboard = (r) => ["analyst","adh","dh","admin"].includes(r);
-const canDatabase  = (r) => ["analyst","adh","dh","admin","teknisi"].includes(r);
+const canDashboard   = (r) => ["analyst","adh","dh","admin"].includes(r);
+const canDatabase    = (r) => ["analyst","adh","dh","admin","teknisi"].includes(r);
+const canPersiapan   = (r) => ["persiapan","analyst","adh","dh","admin"].includes(r);
+const canEntry       = (r) => ["teknisi","analyst","adh","dh","admin"].includes(r);
 const canManageUsers = (r) => r === "admin";
 const canDeleteEdit  = (r, recordUserId, currentUserId) =>
   r === "admin" || recordUserId === currentUserId;
@@ -591,6 +593,11 @@ export default function App() {
   const [filterTech, setFilterTech]       = useState("");
   const [toast, setToast]     = useState(null);
 
+  // persiapan state
+  const [prepRecords, setPrepRecords] = useState([]);
+  const [prepForm, setPrepForm]       = useState({ moldSize:"", moldSerial:"", slotLocation:"", operator:"", date:new Date().toISOString().slice(0,10), notes:"" });
+  const [prepMode, setPrepMode]       = useState("out"); // "out" | "in"
+
   const role = currentUser?.role || "";
   const showToast = (msg, type="success") => { setToast({msg,type}); setTimeout(()=>setToast(null),2800); };
 
@@ -603,8 +610,8 @@ export default function App() {
   const handleLogin = (user) => {
     setCurrentUser(user);
     sessionStorage.setItem("moldtrack_user", JSON.stringify(user));
-    // set default page by role
-    if (user.role === "teknisi") setPage("entry");
+    if (user.role === "teknisi")    setPage("entry");
+    else if (user.role === "persiapan") setPage("persiapan");
     else setPage("dashboard");
   };
 
@@ -622,13 +629,46 @@ export default function App() {
     setLoading(false);
   },[]);
 
-  useEffect(()=>{ if(currentUser) loadRecords(); },[loadRecords, currentUser]);
+  const loadPrepRecords = useCallback(async () => {
+    const { data } = await supabase.from("preparation_records").select("*").order("created_at",{ascending:false});
+    setPrepRecords(data||[]);
+  },[]);
+
+  useEffect(()=>{ if(currentUser){ loadRecords(); loadPrepRecords(); } },[loadRecords, loadPrepRecords, currentUser]);
 
   useEffect(()=>{
     if (!currentUser) return;
-    const ch = supabase.channel("rr").on("postgres_changes",{event:"*",schema:"public",table:"repair_records"},()=>loadRecords()).subscribe();
-    return ()=>supabase.removeChannel(ch);
-  },[loadRecords, currentUser]);
+    const ch1 = supabase.channel("rr").on("postgres_changes",{event:"*",schema:"public",table:"repair_records"},()=>loadRecords()).subscribe();
+    const ch2 = supabase.channel("pr").on("postgres_changes",{event:"*",schema:"public",table:"preparation_records"},()=>loadPrepRecords()).subscribe();
+    return ()=>{ supabase.removeChannel(ch1); supabase.removeChannel(ch2); };
+  },[loadRecords, loadPrepRecords, currentUser]);
+
+  const submitPrepOut = async () => {
+    if (!prepForm.moldSize.trim()||!prepForm.moldSerial.trim()||!prepForm.slotLocation.trim()||!prepForm.operator.trim()) {
+      showToast("Lengkapi: size mold, nomor seri, lokasi slot, dan operator.","error"); return;
+    }
+    const payload = {
+      mold_size: prepForm.moldSize.trim().toUpperCase(),
+      mold_serial: prepForm.moldSerial.trim().toUpperCase(),
+      slot_location: prepForm.slotLocation.trim().toUpperCase(),
+      operator: prepForm.operator.trim(),
+      date: prepForm.date,
+      notes: prepForm.notes,
+      status: "keluar",
+      created_by: currentUser?.id,
+    };
+    const { error } = await supabase.from("preparation_records").insert(payload);
+    if (error) { showToast("Gagal simpan: "+error.message,"error"); return; }
+    showToast("Mold keluar gudang berhasil dicatat.");
+    setPrepForm({ moldSize:"", moldSerial:"", slotLocation:"", operator:"", date:new Date().toISOString().slice(0,10), notes:"" });
+  };
+
+  const submitPrepIn = async (id) => {
+    const { error } = await supabase.from("preparation_records").update({ status:"kembali", returned_at: new Date().toISOString() }).eq("id", id);
+    if (error) { showToast("Gagal update: "+error.message,"error"); return; }
+    showToast("Mold berhasil dicatat kembali ke gudang.");
+    loadPrepRecords();
+  };
 
   const knownSizes = useMemo(()=>[...new Set(records.map(r=>r.mold_size))].sort(),[records]);
   const knownTechs = useMemo(()=>[...new Set(records.map(r=>r.technician))].sort(),[records]);
@@ -705,13 +745,17 @@ export default function App() {
   const detailRec=records.find(r=>r.id===detailId);
   const sameSize=detailRec?records.filter(r=>r.mold_size===detailRec.mold_size&&r.id!==detailRec.id).slice(0,5):[];
 
-  const navTo = (p) => { setPage(p); if(p==="entry"){setForm(emptyForm());setEditId(null);} };
+  const navTo = (p) => {
+    setPage(p);
+    if(p==="entry"){setForm(emptyForm());setEditId(null);}
+  };
 
   // build nav items based on role
   const navItems = [
-    ...(canDashboard(role) ? [["dashboard","ti-layout-dashboard","Dashboard"]] : []),
-    ["entry","ti-plus","Entry"],
-    ...(canDatabase(role)  ? [["database","ti-database","Database"]] : []),
+    ...(canDashboard(role)   ? [["dashboard","ti-layout-dashboard","Dashboard"]] : []),
+    ...(canEntry(role)       ? [["entry","ti-plus","Entry"]] : []),
+    ...(canDatabase(role)    ? [["database","ti-database","Database"]] : []),
+    ...(canPersiapan(role)   ? [["persiapan","ti-package","Persiapan"]] : []),
     ...(canManageUsers(role) ? [["users","ti-users","Users"]] : []),
   ];
 
@@ -776,6 +820,7 @@ export default function App() {
                   {page==="database"&&"Database Record"}
                   {page==="detail"&&"Detail Record"}
                   {page==="users"&&"Kelola User"}
+                  {page==="persiapan"&&"Persiapan Mold"}
                 </div>
                 <div className="topbar-sub">{currentUser.full_name} · <RoleBadge role={role} /></div>
               </div>
@@ -1101,6 +1146,121 @@ export default function App() {
                       <div key={r.id} style={{ paddingBottom:10,marginBottom:10,borderBottom:"1px solid #f0f0f0",cursor:"pointer" }} onClick={()=>setDetailId(r.id)}>
                         <div style={{ fontSize:11,color:"#999",marginBottom:6 }}>{r.date}{r.jam_mulai?` · ${r.jam_mulai}–${r.jam_selesai}`:""}{r.machine_code?` · ${r.machine_code}`:""}</div>
                         <DetailSummary rec={{...r,problemDetails:r.problem_details,problems:r.problems||[]}}/>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* PERSIAPAN */}
+            {page==="persiapan"&&canPersiapan(role)&&(
+              <div>
+                {/* TAB: Keluar / Kembali / History */}
+                <div style={{ display:"flex",gap:8,marginBottom:16 }}>
+                  {[["out","📤 Catat Keluar"],["in","📥 Catat Kembali"],["history","📋 History"]].map(([m,lbl])=>(
+                    <button key={m} onClick={()=>setPrepMode(m)}
+                      style={{ flex:1,padding:"10px 8px",borderRadius:10,border:"1.5px solid",borderColor:prepMode===m?"#1D9E75":"#e0e0e0",background:prepMode===m?"#E1F5EE":"#fff",color:prepMode===m?"#085041":"#666",fontSize:12,fontWeight:prepMode===m?600:400,cursor:"pointer" }}>
+                      {lbl}
+                    </button>
+                  ))}
+                </div>
+
+                {/* CATAT KELUAR */}
+                {prepMode==="out"&&(
+                  <div className="card">
+                    <div className="card-title">📤 Catat Mold Keluar Gudang</div>
+                    <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10 }}>
+                      <div className="form-group">
+                        <label className="form-label">Size mold *</label>
+                        <input className="form-input" placeholder="cth: 205/65R15" value={prepForm.moldSize} onChange={e=>setPrepForm(f=>({...f,moldSize:e.target.value}))} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Nomor seri / ID mold *</label>
+                        <input className="form-input" placeholder="cth: M-20241001" value={prepForm.moldSerial} onChange={e=>setPrepForm(f=>({...f,moldSerial:e.target.value}))} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Lokasi slot gudang *</label>
+                        <input className="form-input" placeholder="cth: A-3" value={prepForm.slotLocation} onChange={e=>setPrepForm(f=>({...f,slotLocation:e.target.value}))} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Tanggal *</label>
+                        <input type="date" className="form-input" value={prepForm.date} onChange={e=>setPrepForm(f=>({...f,date:e.target.value}))} />
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Nama operator *</label>
+                      <input className="form-input" placeholder="Nama operator persiapan" value={prepForm.operator} onChange={e=>setPrepForm(f=>({...f,operator:e.target.value}))} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Catatan (opsional)</label>
+                      <textarea className="form-input" rows={2} style={{ resize:"vertical" }} placeholder="Catatan tambahan..." value={prepForm.notes} onChange={e=>setPrepForm(f=>({...f,notes:e.target.value}))} />
+                    </div>
+                    <button className="btn-primary" onClick={submitPrepOut}>Simpan — Mold Keluar Gudang</button>
+                    <button className="btn-secondary" onClick={()=>setPrepForm({ moldSize:"",moldSerial:"",slotLocation:"",operator:"",date:new Date().toISOString().slice(0,10),notes:"" })}>Reset</button>
+                  </div>
+                )}
+
+                {/* CATAT KEMBALI */}
+                {prepMode==="in"&&(
+                  <div>
+                    <div style={{ fontSize:12,color:"#999",marginBottom:10 }}>Pilih mold yang dikembalikan ke gudang:</div>
+                    {prepRecords.filter(r=>r.status==="keluar").length===0&&(
+                      <div className="card" style={{ textAlign:"center",color:"#999",fontSize:13,padding:24 }}>Tidak ada mold yang sedang keluar gudang.</div>
+                    )}
+                    {prepRecords.filter(r=>r.status==="keluar").map(r=>(
+                      <div key={r.id} className="record-card">
+                        <div className="record-card-header">
+                          <div>
+                            <div className="record-size">{r.mold_size}</div>
+                            <div className="record-type">SN: {r.mold_serial}</div>
+                          </div>
+                          <div style={{ textAlign:"right",fontSize:11,color:"#999" }}>
+                            <div>{r.date}</div>
+                            <div style={{ color:"#E8A020",fontWeight:600,marginTop:2 }}>● Keluar</div>
+                          </div>
+                        </div>
+                        <div style={{ fontSize:11,color:"#666",marginBottom:8 }}>
+                          <div>Slot: <strong>{r.slot_location}</strong></div>
+                          <div>Operator: {r.operator}</div>
+                        </div>
+                        <button className="btn-primary" style={{ margin:0 }} onClick={()=>submitPrepIn(r.id)}>
+                          📥 Catat Kembali ke Gudang
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* HISTORY */}
+                {prepMode==="history"&&(
+                  <div>
+                    <div style={{ fontSize:12,color:"#999",marginBottom:10 }}>{prepRecords.length} total record persiapan</div>
+                    {prepRecords.length===0&&(
+                      <div className="card" style={{ textAlign:"center",color:"#999",fontSize:13,padding:24 }}>Belum ada record persiapan.</div>
+                    )}
+                    {prepRecords.map(r=>(
+                      <div key={r.id} className="record-card">
+                        <div className="record-card-header">
+                          <div>
+                            <div className="record-size">{r.mold_size}</div>
+                            <div className="record-type">SN: {r.mold_serial}</div>
+                          </div>
+                          <div style={{ textAlign:"right" }}>
+                            <div style={{ fontSize:11,color:"#999" }}>{r.date}</div>
+                            <div style={{ marginTop:4 }}>
+                              <span style={{ fontSize:11,padding:"2px 10px",borderRadius:20,fontWeight:600, background:r.status==="keluar"?"#FEF3C7":"#E1F5EE", color:r.status==="keluar"?"#92400E":"#085041" }}>
+                                {r.status==="keluar"?"● Keluar":"✓ Kembali"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div style={{ fontSize:11,color:"#666" }}>
+                          <div>Slot gudang: <strong>{r.slot_location}</strong></div>
+                          <div>Operator: {r.operator}</div>
+                          {r.returned_at&&<div style={{ color:"#1D9E75",marginTop:2 }}>Kembali: {new Date(r.returned_at).toLocaleDateString("id-ID")}</div>}
+                          {r.notes&&<div style={{ marginTop:4,color:"#999" }}>📝 {r.notes}</div>}
+                        </div>
                       </div>
                     ))}
                   </div>
