@@ -139,6 +139,7 @@ const CSS = `
   *{box-sizing:border-box;margin:0;padding:0;}
   body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f5;}
   .app{display:flex;flex-direction:column;min-height:100vh;}
+  .sidebar{display:none;}
   .bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #e5e5e5;display:flex;z-index:50;padding-bottom:env(safe-area-inset-bottom);}
   .bottom-nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px;cursor:pointer;font-size:10px;color:#999;gap:3px;border:none;background:none;}
   .bottom-nav-item.active{color:#1D9E75;}
@@ -738,7 +739,7 @@ export default function App() {
       {toast&&<div className={`toast ${toast.type}`}>{toast.msg}</div>}
       <div className="app">
         {/* SIDEBAR desktop */}
-        <div className="sidebar" style={{ display:"none" }}>
+        <div className="sidebar">
           <div className="sidebar-logo">
             <div style={{ display:"flex",alignItems:"center",gap:8 }}>
               <div className="logo-dot"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="white" strokeWidth="1.5"/><circle cx="8" cy="8" r="2" fill="white"/></svg></div>
