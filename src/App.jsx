@@ -21,7 +21,7 @@ const PLANTS   = ["D","K"];
 const LINES    = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N"];
 const MACHINES = Array.from({length:15},(_,i)=>String(i+1).padStart(2,"0"));
 const PRESSES  = ["L","R"];
-const ROLES    = ["teknisi","persiapan","analyst","adh","dh","admin"];
+const ROLES    = ["teknisi","persiapan","qcgate","analyst","adh","dh","admin"];
 
 // ── EXPORT TO EXCEL ───────────────────────────────────────────────────────────
 const exportToExcel = (records) => {
@@ -116,6 +116,7 @@ const exportToExcel = (records) => {
 const canDashboard   = (r) => ["analyst","adh","dh","admin"].includes(r);
 const canDatabase    = (r) => ["analyst","adh","dh","admin","teknisi"].includes(r);
 const canPersiapan   = (r) => ["persiapan","analyst","adh","dh","admin"].includes(r);
+const canQCGate      = (r) => ["qcgate","analyst","adh","dh","admin"].includes(r);
 const canEntry       = (r) => ["teknisi","analyst","adh","dh","admin"].includes(r);
 const canManageUsers = (r) => r === "admin";
 const canDeleteEdit  = (r, recordUserId, currentUserId) =>
@@ -596,7 +597,15 @@ export default function App() {
   // persiapan state
   const [prepRecords, setPrepRecords] = useState([]);
   const [prepForm, setPrepForm]       = useState({ moldSize:"", moldSerial:"", slotLocation:"", operator:"", date:new Date().toISOString().slice(0,10), notes:"" });
-  const [prepMode, setPrepMode]       = useState("out"); // "out" | "in"
+  const [prepMode, setPrepMode]       = useState("out");
+  const [prepSearch, setPrepSearch]   = useState("");
+
+  // qc gate state
+  const [qcRecords, setQcRecords]   = useState([]);
+  const [qcMode, setQcMode]         = useState("entry");
+  const [qcSearch, setQcSearch]     = useState("");
+  const emptyQcForm = () => ({ moldSize:"", moldSerial:"", cavityCondition:"", defects:[], status:"ok", repairNotes:"", checker:"", jamMulai:"", jamSelesai:"", date:new Date().toISOString().slice(0,10) });
+  const [qcForm, setQcForm]         = useState(emptyQcForm());
 
   const role = currentUser?.role || "";
   const showToast = (msg, type="success") => { setToast({msg,type}); setTimeout(()=>setToast(null),2800); };
@@ -610,8 +619,9 @@ export default function App() {
   const handleLogin = (user) => {
     setCurrentUser(user);
     sessionStorage.setItem("moldtrack_user", JSON.stringify(user));
-    if (user.role === "teknisi")    setPage("entry");
+    if (user.role === "teknisi")        setPage("entry");
     else if (user.role === "persiapan") setPage("persiapan");
+    else if (user.role === "qcgate")    setPage("qcgate");
     else setPage("dashboard");
   };
 
@@ -634,14 +644,20 @@ export default function App() {
     setPrepRecords(data||[]);
   },[]);
 
-  useEffect(()=>{ if(currentUser){ loadRecords(); loadPrepRecords(); } },[loadRecords, loadPrepRecords, currentUser]);
+  const loadQcRecords = useCallback(async () => {
+    const { data } = await supabase.from("qc_records").select("*").order("created_at",{ascending:false});
+    setQcRecords(data||[]);
+  },[]);
+
+  useEffect(()=>{ if(currentUser){ loadRecords(); loadPrepRecords(); loadQcRecords(); } },[loadRecords, loadPrepRecords, loadQcRecords, currentUser]);
 
   useEffect(()=>{
     if (!currentUser) return;
     const ch1 = supabase.channel("rr").on("postgres_changes",{event:"*",schema:"public",table:"repair_records"},()=>loadRecords()).subscribe();
     const ch2 = supabase.channel("pr").on("postgres_changes",{event:"*",schema:"public",table:"preparation_records"},()=>loadPrepRecords()).subscribe();
-    return ()=>{ supabase.removeChannel(ch1); supabase.removeChannel(ch2); };
-  },[loadRecords, loadPrepRecords, currentUser]);
+    const ch3 = supabase.channel("qr").on("postgres_changes",{event:"*",schema:"public",table:"qc_records"},()=>loadQcRecords()).subscribe();
+    return ()=>{ supabase.removeChannel(ch1); supabase.removeChannel(ch2); supabase.removeChannel(ch3); };
+  },[loadRecords, loadPrepRecords, loadQcRecords, currentUser]);
 
   const submitPrepOut = async () => {
     if (!prepForm.moldSize.trim()||!prepForm.moldSerial.trim()||!prepForm.slotLocation.trim()||!prepForm.operator.trim()) {
@@ -668,6 +684,29 @@ export default function App() {
     if (error) { showToast("Gagal update: "+error.message,"error"); return; }
     showToast("Mold berhasil dicatat kembali ke gudang.");
     loadPrepRecords();
+  };
+
+  const submitQc = async () => {
+    if (!qcForm.moldSize.trim()||!qcForm.moldSerial.trim()||!qcForm.checker.trim()) {
+      showToast("Lengkapi: size mold, nomor seri, dan nama checker.","error"); return;
+    }
+    const payload = {
+      mold_size:        qcForm.moldSize.trim().toUpperCase(),
+      mold_serial:      qcForm.moldSerial.trim().toUpperCase(),
+      cavity_condition: qcForm.cavityCondition.trim(),
+      defects:          qcForm.defects,
+      status:           qcForm.status,
+      repair_notes:     qcForm.repairNotes,
+      checker:          qcForm.checker.trim(),
+      jam_mulai:        qcForm.jamMulai,
+      jam_selesai:      qcForm.jamSelesai,
+      date:             qcForm.date,
+      created_by:       currentUser?.id,
+    };
+    const { error } = await supabase.from("qc_records").insert(payload);
+    if (error) { showToast("Gagal simpan: "+error.message,"error"); return; }
+    showToast("Hasil QC berhasil disimpan.");
+    setQcForm(emptyQcForm());
   };
 
   const knownSizes = useMemo(()=>[...new Set(records.map(r=>r.mold_size))].sort(),[records]);
@@ -756,6 +795,7 @@ export default function App() {
     ...(canEntry(role)       ? [["entry","ti-plus","Entry"]] : []),
     ...(canDatabase(role)    ? [["database","ti-database","Database"]] : []),
     ...(canPersiapan(role)   ? [["persiapan","ti-package","Persiapan"]] : []),
+    ...(canQCGate(role)      ? [["qcgate","ti-clipboard-check","QC Gate"]] : []),
     ...(canManageUsers(role) ? [["users","ti-users","Users"]] : []),
   ];
 
@@ -821,6 +861,7 @@ export default function App() {
                   {page==="detail"&&"Detail Record"}
                   {page==="users"&&"Kelola User"}
                   {page==="persiapan"&&"Persiapan Mold"}
+                  {page==="qcgate"&&"QC Gate"}
                 </div>
                 <div className="topbar-sub">{currentUser.full_name} · <RoleBadge role={role} /></div>
               </div>
@@ -1204,31 +1245,50 @@ export default function App() {
                 {/* CATAT KEMBALI */}
                 {prepMode==="in"&&(
                   <div>
-                    <div style={{ fontSize:12,color:"#999",marginBottom:10 }}>Pilih mold yang dikembalikan ke gudang:</div>
-                    {prepRecords.filter(r=>r.status==="keluar").length===0&&(
-                      <div className="card" style={{ textAlign:"center",color:"#999",fontSize:13,padding:24 }}>Tidak ada mold yang sedang keluar gudang.</div>
-                    )}
-                    {prepRecords.filter(r=>r.status==="keluar").map(r=>(
-                      <div key={r.id} className="record-card">
-                        <div className="record-card-header">
-                          <div>
-                            <div className="record-size">{r.mold_size}</div>
-                            <div className="record-type">SN: {r.mold_serial}</div>
-                          </div>
-                          <div style={{ textAlign:"right",fontSize:11,color:"#999" }}>
-                            <div>{r.date}</div>
-                            <div style={{ color:"#E8A020",fontWeight:600,marginTop:2 }}>● Keluar</div>
-                          </div>
-                        </div>
-                        <div style={{ fontSize:11,color:"#666",marginBottom:8 }}>
-                          <div>Line: <strong>{r.slot_location}</strong></div>
-                          <div>Operator: {r.operator}</div>
-                        </div>
-                        <button className="btn-primary" style={{ margin:0 }} onClick={()=>submitPrepIn(r.id)}>
-                          📥 Catat Kembali ke Gudang
-                        </button>
-                      </div>
-                    ))}
+                    <div style={{ position:"relative", marginBottom:10 }}>
+                      <span style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", color:"#999", fontSize:15 }}>🔍</span>
+                      <input style={{ width:"100%", padding:"10px 12px 10px 36px", border:"1px solid #e0e0e0", borderRadius:8, fontSize:14, outline:"none", background:"#fff" }}
+                        placeholder="Cari size mold atau nomor seri..."
+                        value={prepSearch}
+                        onChange={e=>setPrepSearch(e.target.value)}
+                      />
+                    </div>
+                    {(()=>{
+                      const keluarList = prepRecords.filter(r=>r.status==="keluar").filter(r=>
+                        !prepSearch || r.mold_size?.toLowerCase().includes(prepSearch.toLowerCase()) || r.mold_serial?.toLowerCase().includes(prepSearch.toLowerCase())
+                      );
+                      return (
+                        <>
+                          <div style={{ fontSize:12,color:"#999",marginBottom:10 }}>{keluarList.length} mold sedang keluar gudang</div>
+                          {keluarList.length===0&&(
+                            <div className="card" style={{ textAlign:"center",color:"#999",fontSize:13,padding:24 }}>
+                              {prepSearch?"Tidak ada mold yang sesuai pencarian.":"Tidak ada mold yang sedang keluar gudang."}
+                            </div>
+                          )}
+                          {keluarList.map(r=>(
+                            <div key={r.id} className="record-card">
+                              <div className="record-card-header">
+                                <div>
+                                  <div className="record-size">{r.mold_size}</div>
+                                  <div className="record-type">SN: {r.mold_serial}</div>
+                                </div>
+                                <div style={{ textAlign:"right",fontSize:11,color:"#999" }}>
+                                  <div>{r.date}</div>
+                                  <div style={{ color:"#E8A020",fontWeight:600,marginTop:2 }}>● Keluar</div>
+                                </div>
+                              </div>
+                              <div style={{ fontSize:11,color:"#666",marginBottom:8 }}>
+                                <div>Line: <strong>{r.slot_location}</strong></div>
+                                <div>Operator: {r.operator}</div>
+                              </div>
+                              <button className="btn-primary" style={{ margin:0 }} onClick={()=>submitPrepIn(r.id)}>
+                                📥 Catat Kembali ke Gudang
+                              </button>
+                            </div>
+                          ))}
+                        </>
+                      );
+                    })()}
                   </div>
                 )}
 
@@ -1263,6 +1323,164 @@ export default function App() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* QC GATE */}
+            {page==="qcgate"&&canQCGate(role)&&(
+              <div>
+                {/* TABS */}
+                <div style={{ display:"flex",gap:8,marginBottom:16 }}>
+                  {[["entry","🔍 Entry QC"],["history","📋 History QC"]].map(([m,lbl])=>(
+                    <button key={m} onClick={()=>setQcMode(m)}
+                      style={{ flex:1,padding:"10px 8px",borderRadius:10,border:"1.5px solid",borderColor:qcMode===m?"#1D9E75":"#e0e0e0",background:qcMode===m?"#E1F5EE":"#fff",color:qcMode===m?"#085041":"#666",fontSize:12,fontWeight:qcMode===m?600:400,cursor:"pointer" }}>
+                      {lbl}
+                    </button>
+                  ))}
+                </div>
+
+                {/* ENTRY QC */}
+                {qcMode==="entry"&&(
+                  <div>
+                    <div className="card">
+                      <div className="card-title">🔍 Form QC Gate</div>
+                      {/* Identitas mold */}
+                      <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10 }}>
+                        <div className="form-group">
+                          <label className="form-label">Size mold *</label>
+                          <input className="form-input" placeholder="cth: 205/65R15" value={qcForm.moldSize} onChange={e=>setQcForm(f=>({...f,moldSize:e.target.value}))} />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Nomor seri / ID mold *</label>
+                          <input className="form-input" placeholder="cth: M-20241001" value={qcForm.moldSerial} onChange={e=>setQcForm(f=>({...f,moldSerial:e.target.value}))} />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Tanggal *</label>
+                          <input type="date" className="form-input" value={qcForm.date} onChange={e=>setQcForm(f=>({...f,date:e.target.value}))} />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Nama checker *</label>
+                          <input className="form-input" placeholder="Nama checker QC" value={qcForm.checker} onChange={e=>setQcForm(f=>({...f,checker:e.target.value}))} />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Jam mulai</label>
+                          <input type="time" className="form-input" value={qcForm.jamMulai} onChange={e=>setQcForm(f=>({...f,jamMulai:e.target.value}))} />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Jam selesai</label>
+                          <input type="time" className="form-input" value={qcForm.jamSelesai} onChange={e=>setQcForm(f=>({...f,jamSelesai:e.target.value}))} />
+                        </div>
+                      </div>
+
+                      {/* Kondisi cavity */}
+                      <div className="form-group">
+                        <label className="form-label">Kondisi cavity (deskripsi awal)</label>
+                        <textarea className="form-input" rows={2} style={{ resize:"vertical" }} placeholder="Deskripsikan kondisi permukaan cavity mold..." value={qcForm.cavityCondition} onChange={e=>setQcForm(f=>({...f,cavityCondition:e.target.value}))} />
+                      </div>
+
+                      {/* Jenis cacat */}
+                      <div className="form-group">
+                        <label className="form-label">Jenis cacat yang ditemukan</label>
+                        <div style={{ display:"flex",gap:8,flexWrap:"wrap" }}>
+                          {["DMGM","Dirty Mold"].map(d=>{
+                            const active=(qcForm.defects||[]).includes(d);
+                            return(
+                              <div key={d} onClick={()=>setQcForm(f=>({...f,defects:active?f.defects.filter(x=>x!==d):[...f.defects,d]}))}
+                                style={{ padding:"8px 16px",borderRadius:8,border:`1.5px solid ${active?"#E24B4A":"#e0e0e0"}`,background:active?"#FCEBEB":"#f9f9f9",color:active?"#791F1F":"#666",fontSize:13,fontWeight:active?600:400,cursor:"pointer" }}>
+                                {active?"✓ ":""}{d}
+                              </div>
+                            );
+                          })}
+                          <div onClick={()=>setQcForm(f=>({...f,defects:[]}))}
+                            style={{ padding:"8px 16px",borderRadius:8,border:`1.5px solid ${qcForm.defects?.length===0?"#1D9E75":"#e0e0e0"}`,background:qcForm.defects?.length===0?"#E1F5EE":"#f9f9f9",color:qcForm.defects?.length===0?"#085041":"#666",fontSize:13,fontWeight:qcForm.defects?.length===0?600:400,cursor:"pointer" }}>
+                            {qcForm.defects?.length===0?"✓ ":""}Tidak ada cacat
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Status hasil QC */}
+                      <div className="form-group">
+                        <label className="form-label">Status hasil QC *</label>
+                        <div style={{ display:"flex",gap:8,flexWrap:"wrap" }}>
+                          {[
+                            ["ok","✅ OK — Langsung lolos","#1D9E75","#E1F5EE","#085041"],
+                            ["minor","⚠️ Minor — Repair on-spot","#E8A020","#FEF3C7","#92400E"],
+                            ["major","🚫 Major — Hold & area repair","#E24B4A","#FCEBEB","#791F1F"],
+                          ].map(([val,lbl,border,bg,color])=>(
+                            <div key={val} onClick={()=>setQcForm(f=>({...f,status:val}))}
+                              style={{ flex:1,padding:"10px 8px",borderRadius:8,border:`1.5px solid ${qcForm.status===val?border:"#e0e0e0"}`,background:qcForm.status===val?bg:"#f9f9f9",color:qcForm.status===val?color:"#666",fontSize:12,fontWeight:qcForm.status===val?600:400,cursor:"pointer",textAlign:"center",minWidth:100 }}>
+                              {lbl}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Repair notes — muncul jika minor atau major */}
+                      {(qcForm.status==="minor"||qcForm.status==="major")&&(
+                        <div className="form-group">
+                          <label className="form-label">{qcForm.status==="minor"?"Detail repair on-spot":"Keterangan hold / alasan major"}</label>
+                          <textarea className="form-input" rows={3} style={{ resize:"vertical" }} placeholder={qcForm.status==="minor"?"Jelaskan repair yang dilakukan...":"Jelaskan kondisi cacat dan tindakan selanjutnya..."} value={qcForm.repairNotes} onChange={e=>setQcForm(f=>({...f,repairNotes:e.target.value}))} />
+                        </div>
+                      )}
+
+                      <button className="btn-primary" onClick={submitQc}>Simpan Hasil QC</button>
+                      <button className="btn-secondary" onClick={()=>setQcForm(emptyQcForm())}>Reset</button>
+                    </div>
+                  </div>
+                )}
+
+                {/* HISTORY QC */}
+                {qcMode==="history"&&(
+                  <div>
+                    <div style={{ position:"relative",marginBottom:10 }}>
+                      <span style={{ position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:"#999",fontSize:15 }}>🔍</span>
+                      <input style={{ width:"100%",padding:"10px 12px 10px 36px",border:"1px solid #e0e0e0",borderRadius:8,fontSize:14,outline:"none",background:"#fff" }}
+                        placeholder="Cari size mold atau nomor seri..."
+                        value={qcSearch} onChange={e=>setQcSearch(e.target.value)}
+                      />
+                    </div>
+                    {(()=>{
+                      const list = qcRecords.filter(r=>!qcSearch||r.mold_size?.toLowerCase().includes(qcSearch.toLowerCase())||r.mold_serial?.toLowerCase().includes(qcSearch.toLowerCase()));
+                      const statusCfg = {
+                        ok:    { label:"✅ OK",    bg:"#E1F5EE", color:"#085041" },
+                        minor: { label:"⚠️ Minor", bg:"#FEF3C7", color:"#92400E" },
+                        major: { label:"🚫 Major", bg:"#FCEBEB", color:"#791F1F" },
+                      };
+                      return (
+                        <>
+                          <div style={{ fontSize:12,color:"#999",marginBottom:10 }}>{list.length} record QC</div>
+                          {list.length===0&&<div className="card" style={{ textAlign:"center",color:"#999",fontSize:13,padding:24 }}>Belum ada record QC.</div>}
+                          {list.map(r=>{
+                            const cfg = statusCfg[r.status]||statusCfg.ok;
+                            return(
+                              <div key={r.id} className="record-card">
+                                <div className="record-card-header">
+                                  <div>
+                                    <div className="record-size">{r.mold_size}</div>
+                                    <div className="record-type">SN: {r.mold_serial}</div>
+                                  </div>
+                                  <div style={{ textAlign:"right" }}>
+                                    <div style={{ fontSize:11,color:"#999" }}>{r.date}</div>
+                                    <div style={{ marginTop:4 }}>
+                                      <span style={{ fontSize:11,padding:"2px 10px",borderRadius:20,fontWeight:600,background:cfg.bg,color:cfg.color }}>{cfg.label}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div style={{ fontSize:11,color:"#666",marginTop:4 }}>
+                                  <div>Checker: <strong>{r.checker}</strong></div>
+                                  {r.jam_mulai&&<div>Jam: {r.jam_mulai}–{r.jam_selesai}</div>}
+                                  {r.defects?.length>0&&<div style={{ marginTop:4 }}>Cacat: {r.defects.map(d=><span key={d} style={{ background:"#FCEBEB",color:"#791F1F",fontSize:11,padding:"1px 8px",borderRadius:4,marginRight:4,fontWeight:500 }}>{d}</span>)}</div>}
+                                  {r.cavity_condition&&<div style={{ marginTop:4,color:"#999" }}>Cavity: {r.cavity_condition}</div>}
+                                  {r.repair_notes&&<div style={{ marginTop:4,color:"#999" }}>📝 {r.repair_notes}</div>}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </>
+                      );
+                    })()}
                   </div>
                 )}
               </div>
