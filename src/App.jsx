@@ -1180,7 +1180,7 @@ export default function App() {
                         <input className="form-input" placeholder="cth: M-20241001" value={prepForm.moldSerial} onChange={e=>setPrepForm(f=>({...f,moldSerial:e.target.value}))} />
                       </div>
                       <div className="form-group">
-                        <label className="form-label">Lokasi slot gudang *</label>
+                        <label className="form-label">Line *</label>
                         <input className="form-input" placeholder="cth: A-3" value={prepForm.slotLocation} onChange={e=>setPrepForm(f=>({...f,slotLocation:e.target.value}))} />
                       </div>
                       <div className="form-group">
@@ -1221,7 +1221,7 @@ export default function App() {
                           </div>
                         </div>
                         <div style={{ fontSize:11,color:"#666",marginBottom:8 }}>
-                          <div>Slot: <strong>{r.slot_location}</strong></div>
+                          <div>Line: <strong>{r.slot_location}</strong></div>
                           <div>Operator: {r.operator}</div>
                         </div>
                         <button className="btn-primary" style={{ margin:0 }} onClick={()=>submitPrepIn(r.id)}>
@@ -1256,7 +1256,7 @@ export default function App() {
                           </div>
                         </div>
                         <div style={{ fontSize:11,color:"#666" }}>
-                          <div>Slot gudang: <strong>{r.slot_location}</strong></div>
+                          <div>Line: <strong>{r.slot_location}</strong></div>
                           <div>Operator: {r.operator}</div>
                           {r.returned_at&&<div style={{ color:"#1D9E75",marginTop:2 }}>Kembali: {new Date(r.returned_at).toLocaleDateString("id-ID")}</div>}
                           {r.notes&&<div style={{ marginTop:4,color:"#999" }}>📝 {r.notes}</div>}
