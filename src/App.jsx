@@ -441,7 +441,7 @@ function LoginPage({ onLogin }) {
           </div>
           <div>
             <div className="login-title">MoldTrack</div>
-            <div className="login-sub">Mold Tire Action Problem</div>
+            <div className="login-sub">© by DMM</div>
           </div>
         </div>
         {error && <div className="login-error">{error}</div>}
@@ -833,7 +833,7 @@ export default function App() {
           <div className="sidebar-logo">
             <div style={{ display:"flex",alignItems:"center",gap:8 }}>
               <div className="logo-dot"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="white" strokeWidth="1.5"/><circle cx="8" cy="8" r="2" fill="white"/></svg></div>
-              <div><div style={{ fontSize:13,fontWeight:600,color:"#111" }}>MoldTrack</div><div style={{ fontSize:10,color:"#999" }}>Mold Tire Action</div></div>
+              <div><div style={{ fontSize:13,fontWeight:600,color:"#111" }}>MoldTrack</div><div style={{ fontSize:10,color:"#999" }}>© by DMM</div></div>
             </div>
           </div>
           <div className="sidebar-nav">
