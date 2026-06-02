@@ -133,7 +133,7 @@ const emptyProblemDetail = (pid) => {
 };
 const emptyForm = () => ({
   moldSize:"", moldType:"segmented",
-  containerNo:"", moldNoL:"", moldNoR:"",
+  containerNoL:"", containerNoR:"", moldNoL:"", moldNoR:"",
   date:new Date().toISOString().slice(0,10),
   jamMulai:"", jamSelesai:"",
   technician:"",
@@ -740,7 +740,8 @@ export default function App() {
     }
     const payload={
       mold_size:form.moldSize.trim().toUpperCase(), mold_type:form.moldType,
-      container_no:form.containerNo.trim().toUpperCase(),
+      container_no_l:form.containerNoL.trim().toUpperCase(),
+      container_no_r:form.containerNoR.trim().toUpperCase(),
       mold_no_l:form.moldNoL.trim().toUpperCase(),
       mold_no_r:form.moldNoR.trim().toUpperCase(),
       date:form.date, jam_mulai:form.jamMulai, jam_selesai:form.jamSelesai,
@@ -763,7 +764,7 @@ export default function App() {
 
   const startEdit = (rec) => {
     const pressVal = Array.isArray(rec.press) ? rec.press : (rec.press ? [rec.press] : []);
-    setForm({moldSize:rec.mold_size,moldType:rec.mold_type,containerNo:rec.container_no||"",moldNoL:rec.mold_no_l||"",moldNoR:rec.mold_no_r||"",date:rec.date,jamMulai:rec.jam_mulai||"",jamSelesai:rec.jam_selesai||"",technician:rec.technician,plant:rec.plant||"",line:rec.line||"",machine:rec.machine||"",press:pressVal,problems:rec.problems||[],problemDetails:rec.problem_details||{},notes:rec.notes||""});
+    setForm({moldSize:rec.mold_size,moldType:rec.mold_type,containerNoL:rec.container_no_l||"",containerNoR:rec.container_no_r||"",moldNoL:rec.mold_no_l||"",moldNoR:rec.mold_no_r||"",date:rec.date,jamMulai:rec.jam_mulai||"",jamSelesai:rec.jam_selesai||"",technician:rec.technician,plant:rec.plant||"",line:rec.line||"",machine:rec.machine||"",press:pressVal,problems:rec.problems||[],problemDetails:rec.problem_details||{},notes:rec.notes||""});
     setEditId(rec.id);setPage("entry");
   };
 
@@ -972,9 +973,15 @@ export default function App() {
                     </div>
                   </div>
                   <AutocompleteInput label="Nama teknisi *" value={form.technician} onChange={v=>setForm(f=>({...f,technician:v}))} suggestions={knownTechs} placeholder="Ketik nama kamu..."/>
-                  <div className="form-group">
-                    <label className="form-label">Nomor Container</label>
-                    <input className="form-input" placeholder="cth: C-001" value={form.containerNo} onChange={e=>setForm(f=>({...f,containerNo:e.target.value}))} />
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="form-label">Nomor Container L</label>
+                      <input className="form-input" placeholder="cth: C-001L" value={form.containerNoL} onChange={e=>setForm(f=>({...f,containerNoL:e.target.value}))} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Nomor Container R</label>
+                      <input className="form-input" placeholder="cth: C-001R" value={form.containerNoR} onChange={e=>setForm(f=>({...f,containerNoR:e.target.value}))} />
+                    </div>
                   </div>
                   <div className="form-row">
                     <div className="form-group">
