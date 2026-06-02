@@ -206,9 +206,9 @@ const CSS = `
   .bar-fill{height:6px;background:#1D9E75;border-radius:3px;}
   .search-wrap{position:relative;margin-bottom:10px;}
   .search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#999;font-size:16px;}
-  .search-input{width:100%;padding:10px 12px 10px 36px;border:1px solid #e0e0e0;border-radius:8px;font-size:14px;background:#fff;outline:none;}
+  .search-input{width:100%;padding:10px 12px 10px 36px;border:1px solid #e0e0e0;border-radius:8px;font-size:14px;background:#fff;outline:none;color:#111;}
   .filter-row{display:flex;gap:8px;margin-bottom:12px;overflow-x:auto;padding-bottom:2px;}
-  .filter-select{padding:8px 10px;border:1px solid #e0e0e0;border-radius:8px;font-size:12px;background:#fff;white-space:nowrap;flex-shrink:0;}
+  .filter-select{padding:8px 10px;border:1px solid #e0e0e0;border-radius:8px;font-size:12px;background:#fff;white-space:nowrap;flex-shrink:0;color:#111;}
   .autocomplete-wrap{position:relative;}
   .autocomplete-dropdown{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #e0e0e0;border-radius:8px;z-index:100;max-height:160px;overflow-y:auto;margin-top:2px;box-shadow:0 4px 12px rgba(0,0,0,0.1);}
   .autocomplete-item{padding:10px 12px;font-size:13px;cursor:pointer;color:#111;}
