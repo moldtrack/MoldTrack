@@ -693,6 +693,7 @@ export default function App() {
       notes: prepForm.notes,
       status: "keluar",
       created_by: currentUser?.id,
+      grup: currentUser?.username?.startsWith("grup-") ? currentUser.username.replace("grup-","").toUpperCase() : null,
     };
     const { error } = await supabase.from("preparation_records").insert(payload);
     if (error) { showToast("Gagal simpan: "+error.message,"error"); return; }
@@ -723,6 +724,7 @@ export default function App() {
       jam_selesai:      qcForm.jamSelesai,
       date:             qcForm.date,
       created_by:       currentUser?.id,
+      grup: currentUser?.username?.startsWith("grup-") ? currentUser.username.replace("grup-","").toUpperCase() : null,
     };
     const { error } = await supabase.from("qc_records").insert(payload);
     if (error) { showToast("Gagal simpan: "+error.message,"error"); return; }
@@ -1081,31 +1083,44 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* PERBANDINGAN GRUP */}
+                      {/* PERBANDINGAN GRUP PER PROSES */}
                       {(()=>{
                         const grups = ["A","B","C","D"];
-                        const grupCounts = grups.map(g=>({
+                        const colors = ["#1D9E75","#3B82F6","#F59E0B","#EF4444"];
+                        const proses = [
+                          {label:"Action Problem", data:filtered},
+                          {label:"Persiapan Mold", data:prepRecords},
+                          {label:"QC Gate",        data:qcRecords},
+                        ];
+                        const grupTotals = grups.map(g=>({
                           name:`Grup ${g}`,
-                          count:filtered.filter(r=>r.grup===g).length,
-                          color:["#1D9E75","#3B82F6","#F59E0B","#EF4444"][grups.indexOf(g)]
+                          color:colors[grups.indexOf(g)],
+                          counts:proses.map(p=>p.data.filter(r=>r.grup===g).length)
                         }));
-                        const maxGrup = Math.max(...grupCounts.map(g=>g.count),1);
+                        const maxVal = Math.max(...grupTotals.flatMap(g=>g.counts),1);
                         return(
                           <div className="card" style={{ marginBottom:16 }}>
-                            <div className="card-title">👥 Perbandingan Grup</div>
-                            {grupCounts.every(g=>g.count===0)&&<div style={{ fontSize:12,color:"#999" }}>Belum ada data per grup.</div>}
-                            <div style={{ display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:12 }}>
-                              {grupCounts.map(g=>(
-                                <div key={g.name} style={{ textAlign:"center",padding:"12px 8px",borderRadius:8,background:"#f8f8f8",border:`2px solid ${g.color}20` }}>
-                                  <div style={{ fontSize:22,fontWeight:700,color:g.color }}>{g.count}</div>
-                                  <div style={{ fontSize:12,color:"#666",marginTop:4 }}>{g.name}</div>
+                            <div className="card-title">👥 Perbandingan Grup per Proses</div>
+                            {/* Summary cards */}
+                            <div style={{ display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:16 }}>
+                              {grupTotals.map(g=>(
+                                <div key={g.name} style={{ textAlign:"center",padding:"10px 6px",borderRadius:8,background:"#f8f8f8",border:`2px solid ${g.color}30` }}>
+                                  <div style={{ fontSize:20,fontWeight:700,color:g.color }}>{g.counts.reduce((a,b)=>a+b,0)}</div>
+                                  <div style={{ fontSize:11,color:"#666",marginTop:2 }}>{g.name}</div>
+                                  <div style={{ fontSize:10,color:"#999",marginTop:4 }}>total semua proses</div>
                                 </div>
                               ))}
                             </div>
-                            {grupCounts.map(g=>(
-                              <div key={g.name} className="bar-row">
-                                <div className="bar-row-header"><span>{g.name}</span><span style={{ fontWeight:600,color:"#111" }}>{g.count}</span></div>
-                                <div className="bar-track"><div className="bar-fill" style={{ width:`${Math.round((g.count/maxGrup)*100)}%`,background:g.color }}></div></div>
+                            {/* Per proses breakdown */}
+                            {proses.map((p,pi)=>(
+                              <div key={p.label} style={{ marginBottom:12 }}>
+                                <div style={{ fontSize:11,fontWeight:600,color:"#999",marginBottom:6 }}>{p.label.toUpperCase()}</div>
+                                {grupTotals.map(g=>(
+                                  <div key={g.name} className="bar-row">
+                                    <div className="bar-row-header"><span style={{ fontSize:11 }}>{g.name}</span><span style={{ fontWeight:600,color:"#111" }}>{g.counts[pi]}</span></div>
+                                    <div className="bar-track"><div className="bar-fill" style={{ width:`${Math.round((g.counts[pi]/maxVal)*100)}%`,background:g.color }}></div></div>
+                                  </div>
+                                ))}
                               </div>
                             ))}
                           </div>
