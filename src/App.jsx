@@ -1160,12 +1160,15 @@ export default function App() {
                             {proses.map((p,pi)=>(
                               <div key={p.label} style={{ marginBottom:12 }}>
                                 <div style={{ fontSize:11,fontWeight:600,color:"#999",marginBottom:6 }}>{p.label.toUpperCase()}</div>
-                                {grupTotals.map(g=>(
-                                  <div key={g.name} className="bar-row">
-                                    <div className="bar-row-header"><span style={{ fontSize:11 }}>{g.name}</span><span style={{ fontWeight:600,color:"#111" }}>{g.counts[pi]}</span></div>
-                                    <div className="bar-track"><div className="bar-fill" style={{ width:`${Math.round((g.counts[pi]/maxVal)*100)}%`,background:g.color }}></div></div>
-                                  </div>
-                                ))}
+                                {grupTotals.every(g=>g.counts[pi]===0)
+                                  ? <div style={{ fontSize:11,color:"#ccc",fontStyle:"italic",paddingLeft:4 }}>Belum ada data</div>
+                                  : grupTotals.map(g=>(
+                                    <div key={g.name} className="bar-row">
+                                      <div className="bar-row-header"><span style={{ fontSize:11 }}>{g.name}</span><span style={{ fontWeight:600,color:"#111" }}>{g.counts[pi]}</span></div>
+                                      <div className="bar-track"><div className="bar-fill" style={{ width:`${Math.round((g.counts[pi]/maxVal)*100)}%`,background:g.color }}></div></div>
+                                    </div>
+                                  ))
+                                }
                               </div>
                             ))}
                           </div>
