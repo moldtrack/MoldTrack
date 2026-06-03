@@ -1931,11 +1931,10 @@ export default function App() {
                     <label className="form-label">Catatan</label>
                     <textarea className="form-input" rows={3} placeholder="Catatan tambahan..." value={naikForm.notes||""} onChange={e=>setNaikForm(f=>({...f,notes:e.target.value}))} style={{ resize:"vertical" }}/>
                   </div>
-                </div>
 
-                <button className="btn-primary" onClick={submitNaik}>⬆️ Simpan Naik Mold</button>
-                <button className="btn-secondary" style={{ marginTop:8 }} onClick={()=>setNaikForm(emptyNaikForm())}>Reset</button>
-                </div>
+                  <button className="btn-primary" onClick={submitNaik}>⬆️ Simpan Naik Mold</button>
+                  <button className="btn-secondary" style={{ marginTop:8 }} onClick={()=>setNaikForm(emptyNaikForm())}>Reset</button>
+                  </div>
                 )}
 
                 {/* DATABASE TAB */}
