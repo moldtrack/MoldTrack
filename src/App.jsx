@@ -613,6 +613,7 @@ export default function App() {
   const [filterProblem, setFilterProblem] = useState("");
   const [filterTech, setFilterTech]       = useState("");
   const [toast, setToast]     = useState(null);
+  const [filterMonth, setFilterMonth]     = useState(new Date().toISOString().slice(0,7));
 
   // persiapan state
   const [prepRecords, setPrepRecords] = useState([]);
@@ -913,7 +914,6 @@ export default function App() {
                 {(()=>{
                   const now = new Date();
                   const thisMonth = now.toISOString().slice(0,7);
-                  const [filterMonth, setFilterMonth] = useState(thisMonth);
                   const filtered = filterMonth==="all" ? records : records.filter(r=>r.date?.startsWith(filterMonth));
                   const todayStr = now.toISOString().slice(0,10);
                   const todayFiltered = filtered.filter(r=>r.date===todayStr);
