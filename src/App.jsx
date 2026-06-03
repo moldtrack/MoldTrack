@@ -24,6 +24,7 @@ const MACHINES_K = Array.from({length:10},(_,i)=>String(i+21).padStart(2,"0")); 
 const getMachines = (plant) => plant==="K" ? MACHINES_K : MACHINES_D;
 const MAKER_CONTAINER = ["Greatoo","Seahwa","Himille","Sumhing","Herbert","AZ German","Tyangyang"];
 const TYPE_CONTAINER  = ["S-TYPE","AZIII/2","AZIII","AZIV","L46","L48","AZ V","AW 200"];
+const PRESSES  = ["L","R"];
 
 const ROLES    = ["teknisi","persiapan","qcgate","analyst","adh","dh","admin"];
 
