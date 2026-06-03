@@ -628,7 +628,7 @@ export default function App() {
   const emptyQcForm = () => ({ moldSize:"", moldSerial:"", cavityCondition:"", defects:[], status:"ok", repairNotes:"", checker:"", jamMulai:"", jamSelesai:"", date:new Date().toISOString().slice(0,10) });
   const [qcForm, setQcForm]         = useState(emptyQcForm());
 
-  const emptyNaikForm = () => ({ moldSizeNaik:"", moldSizeTurun:"", plant:"", line:"", machine:"", containerNoL:"", containerNoR:"", moldNoL:"", moldNoR:"", turunContainerNoL:"", turunContainerNoR:"", turunMoldNoL:"", turunMoldNoR:"", jamMulai:"", jamSelesai:"", operator:"", date:new Date().toISOString().slice(0,10) });
+  const emptyNaikForm = () => ({ moldSizeNaik:"", moldSizeTurun:"", plant:"", line:"", machine:"", containerNoL:"", containerNoR:"", moldNoL:"", moldNoR:"", turunContainerNoL:"", turunContainerNoR:"", turunMoldNoL:"", turunMoldNoR:"", jamMulai:"", jamSelesai:"", operator:"", notes:"", date:new Date().toISOString().slice(0,10) });
   const [naikForm, setNaikForm]     = useState(emptyNaikForm());
   const [naikRecords, setNaikRecords] = useState([]);
 
@@ -713,6 +713,7 @@ export default function App() {
       jam_selesai:      naikForm.jamSelesai||null,
       operator:         naikForm.operator.trim(),
       date:             naikForm.date,
+      notes:            naikForm.notes||null,
       created_by:       currentUser?.id,
       grup:             currentUser?.username?.startsWith("grup-") ? currentUser.username.replace("grup-","").toUpperCase() : null,
     };
@@ -1795,55 +1796,17 @@ export default function App() {
               </div>
             )}
 
-            {/* NAIK MOLD - Under Development */}
+            {/* NAIK MOLD */}
             {page==="naik"&&(
               <div>
-                {/* FORM NAIK MOLD */}
                 <div className="card" style={{ marginBottom:16 }}>
                   <div className="card-title" style={{ textAlign:"center",fontSize:16 }}>⬆️ Naik Mold</div>
                   <div className="form-group">
                     <label className="form-label">Tanggal *</label>
                     <input type="date" className="form-input" value={naikForm.date} onChange={e=>setNaikForm(f=>({...f,date:e.target.value}))} />
                   </div>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label className="form-label">Size Mold Naik *</label>
-                      <input className="form-input" placeholder="cth: 205/65R15" value={naikForm.moldSizeNaik} onChange={e=>setNaikForm(f=>({...f,moldSizeNaik:e.target.value}))} />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Size Mold Turun</label>
-                      <input className="form-input" placeholder="cth: 195/65R15" value={naikForm.moldSizeTurun} onChange={e=>setNaikForm(f=>({...f,moldSizeTurun:e.target.value}))} />
-                    </div>
-                  </div>
-                  {naikForm.moldSizeTurun&&(
-                    <>
-                      <div className="form-row">
-                        <div className="form-group">
-                          <label className="form-label">No Container L (Turun)</label>
-                          <input className="form-input" placeholder="cth: C-001L" value={naikForm.turunContainerNoL} onChange={e=>setNaikForm(f=>({...f,turunContainerNoL:e.target.value}))} />
-                        </div>
-                        <div className="form-group">
-                          <label className="form-label">No Container R (Turun)</label>
-                          <input className="form-input" placeholder="cth: C-001R" value={naikForm.turunContainerNoR} onChange={e=>setNaikForm(f=>({...f,turunContainerNoR:e.target.value}))} />
-                        </div>
-                      </div>
-                      <div className="form-row">
-                        <div className="form-group">
-                          <label className="form-label">No Mold L (Turun)</label>
-                          <input className="form-input" placeholder="cth: ML-001" value={naikForm.turunMoldNoL} onChange={e=>setNaikForm(f=>({...f,turunMoldNoL:e.target.value}))} />
-                        </div>
-                        <div className="form-group">
-                          <label className="form-label">No Mold R (Turun)</label>
-                          <input className="form-input" placeholder="cth: MR-001" value={naikForm.turunMoldNoR} onChange={e=>setNaikForm(f=>({...f,turunMoldNoR:e.target.value}))} />
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
 
-                {/* MESIN */}
-                <div className="card" style={{ marginBottom:16 }}>
-                  <div className="card-title" style={{ textAlign:"center" }}>Mesin yang dikerjakan *</div>
+                  {/* PLANT LINE MESIN */}
                   <div className="form-row">
                     <div className="form-group">
                       <label className="form-label">Plant *</label>
@@ -1867,37 +1830,71 @@ export default function App() {
                       {(naikForm.plant==="D"?MACHINES_D:naikForm.plant==="K"?MACHINES_K:[]).map(m=><option key={m} value={m}>{m}</option>)}
                     </select>
                   </div>
-                </div>
 
-                {/* CONTAINER & MOLD */}
-                <div className="card" style={{ marginBottom:16 }}>
-                  <div className="card-title" style={{ textAlign:"center" }}>Nomor Container & Mold</div>
+                  {/* SIZE MOLD */}
                   <div className="form-row">
                     <div className="form-group">
-                      <label className="form-label">No Container L</label>
-                      <input className="form-input" placeholder="cth: C-001L" value={naikForm.containerNoL} onChange={e=>setNaikForm(f=>({...f,containerNoL:e.target.value}))} />
+                      <label className="form-label">Size Mold Naik *</label>
+                      <input className="form-input" placeholder="cth: 205/65R15" value={naikForm.moldSizeNaik} onChange={e=>setNaikForm(f=>({...f,moldSizeNaik:e.target.value}))} />
                     </div>
                     <div className="form-group">
-                      <label className="form-label">No Container R</label>
-                      <input className="form-input" placeholder="cth: C-001R" value={naikForm.containerNoR} onChange={e=>setNaikForm(f=>({...f,containerNoR:e.target.value}))} />
+                      <label className="form-label">Size Mold Turun</label>
+                      <input className="form-input" placeholder="cth: 195/65R15 (jika ada)" value={naikForm.moldSizeTurun} onChange={e=>setNaikForm(f=>({...f,moldSizeTurun:e.target.value}))} />
                     </div>
                   </div>
+
+                  {/* NO MOLD */}
+                  <div style={{ fontSize:11,color:"#999",fontWeight:600,marginBottom:6,marginTop:4 }}>NO MOLD</div>
                   <div className="form-row">
                     <div className="form-group">
-                      <label className="form-label">No Mold L</label>
+                      <label className="form-label">No Mold L (Naik)</label>
                       <input className="form-input" placeholder="cth: ML-001" value={naikForm.moldNoL} onChange={e=>setNaikForm(f=>({...f,moldNoL:e.target.value}))} />
                     </div>
                     <div className="form-group">
-                      <label className="form-label">No Mold R</label>
+                      <label className="form-label">No Mold R (Naik)</label>
                       <input className="form-input" placeholder="cth: MR-001" value={naikForm.moldNoR} onChange={e=>setNaikForm(f=>({...f,moldNoR:e.target.value}))} />
                     </div>
                   </div>
-                </div>
+                  {naikForm.moldSizeTurun&&(
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label className="form-label">No Mold L (Turun)</label>
+                        <input className="form-input" placeholder="cth: ML-001" value={naikForm.turunMoldNoL} onChange={e=>setNaikForm(f=>({...f,turunMoldNoL:e.target.value}))} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">No Mold R (Turun)</label>
+                        <input className="form-input" placeholder="cth: MR-001" value={naikForm.turunMoldNoR} onChange={e=>setNaikForm(f=>({...f,turunMoldNoR:e.target.value}))} />
+                      </div>
+                    </div>
+                  )}
 
-                {/* JAM & OPERATOR */}
-                <div className="card" style={{ marginBottom:16 }}>
-                  <div className="card-title" style={{ textAlign:"center" }}>Jam & Operator</div>
-                  <div className="form-group">
+                  {/* NO CONTAINER */}
+                  <div style={{ fontSize:11,color:"#999",fontWeight:600,marginBottom:6,marginTop:4 }}>NO CONTAINER</div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="form-label">No Container L (Naik)</label>
+                      <input className="form-input" placeholder="cth: C-001L" value={naikForm.containerNoL} onChange={e=>setNaikForm(f=>({...f,containerNoL:e.target.value}))} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">No Container R (Naik)</label>
+                      <input className="form-input" placeholder="cth: C-001R" value={naikForm.containerNoR} onChange={e=>setNaikForm(f=>({...f,containerNoR:e.target.value}))} />
+                    </div>
+                  </div>
+                  {naikForm.moldSizeTurun&&(
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label className="form-label">No Container L (Turun)</label>
+                        <input className="form-input" placeholder="cth: C-001L" value={naikForm.turunContainerNoL} onChange={e=>setNaikForm(f=>({...f,turunContainerNoL:e.target.value}))} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">No Container R (Turun)</label>
+                        <input className="form-input" placeholder="cth: C-001R" value={naikForm.turunContainerNoR} onChange={e=>setNaikForm(f=>({...f,turunContainerNoR:e.target.value}))} />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* JAM */}
+                  <div className="form-group" style={{ marginTop:4 }}>
                     <label className="form-label">Jam pengerjaan</label>
                     <div style={{ display:"flex",gap:8,alignItems:"center" }}>
                       <input type="time" className="form-input" value={naikForm.jamMulai} onChange={e=>setNaikForm(f=>({...f,jamMulai:e.target.value}))} />
@@ -1905,7 +1902,15 @@ export default function App() {
                       <input type="time" className="form-input" value={naikForm.jamSelesai} onChange={e=>setNaikForm(f=>({...f,jamSelesai:e.target.value}))} />
                     </div>
                   </div>
-                  <AutocompleteInput label="Nama operator *" value={naikForm.operator} onChange={v=>setNaikForm(f=>({...f,operator:v}))} suggestions={knownTechs} placeholder="Ketik nama operator..."/>
+
+                  {/* PIC */}
+                  <AutocompleteInput label="PIC / Operator *" value={naikForm.operator} onChange={v=>setNaikForm(f=>({...f,operator:v}))} suggestions={knownTechs} placeholder="Ketik nama PIC..."/>
+
+                  {/* CATATAN */}
+                  <div className="form-group">
+                    <label className="form-label">Catatan</label>
+                    <textarea className="form-input" rows={3} placeholder="Catatan tambahan..." value={naikForm.notes||""} onChange={e=>setNaikForm(f=>({...f,notes:e.target.value}))} style={{ resize:"vertical" }}/>
+                  </div>
                 </div>
 
                 <button className="btn-primary" onClick={submitNaik}>⬆️ Simpan Naik Mold</button>
@@ -1931,16 +1936,17 @@ export default function App() {
                     {r.machine_code&&<div style={{ fontSize:12,fontWeight:600,color:"#1D9E75",marginBottom:6 }}><i className="ti ti-robot" style={{ fontSize:13,marginRight:4 }}></i>{r.machine_code}</div>}
                     {(r.container_no_l||r.container_no_r)&&(
                       <div style={{ fontSize:11,color:"#666",marginBottom:4,display:"flex",gap:12 }}>
-                        {r.container_no_l&&<span>Container L: <strong>{r.container_no_l}</strong></span>}
-                        {r.container_no_r&&<span>Container R: <strong>{r.container_no_r}</strong></span>}
+                        {r.container_no_l&&<span>Container L(↑): <strong>{r.container_no_l}</strong></span>}
+                        {r.container_no_r&&<span>Container R(↑): <strong>{r.container_no_r}</strong></span>}
                       </div>
                     )}
                     {(r.mold_no_l||r.mold_no_r)&&(
                       <div style={{ fontSize:11,color:"#666",marginBottom:4,display:"flex",gap:12 }}>
-                        {r.mold_no_l&&<span>Mold L: <strong>{r.mold_no_l}</strong></span>}
-                        {r.mold_no_r&&<span>Mold R: <strong>{r.mold_no_r}</strong></span>}
+                        {r.mold_no_l&&<span>Mold L(↑): <strong>{r.mold_no_l}</strong></span>}
+                        {r.mold_no_r&&<span>Mold R(↑): <strong>{r.mold_no_r}</strong></span>}
                       </div>
                     )}
+                    {r.notes&&<div style={{ fontSize:11,color:"#666",marginBottom:4 }}>📝 {r.notes}</div>}
                     <div className="record-meta"><i className="ti ti-user" style={{ fontSize:12,marginRight:4 }}></i>{r.operator}</div>
                   </div>
                 ))}
