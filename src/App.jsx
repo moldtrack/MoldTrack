@@ -628,6 +628,10 @@ export default function App() {
   const emptyQcForm = () => ({ moldSize:"", moldSerial:"", cavityCondition:"", defects:[], status:"ok", repairNotes:"", checker:"", jamMulai:"", jamSelesai:"", date:new Date().toISOString().slice(0,10) });
   const [qcForm, setQcForm]         = useState(emptyQcForm());
 
+  const emptyNaikForm = () => ({ moldSizeNaik:"", moldSizeTurun:"", plant:"", line:"", machine:"", containerNoL:"", containerNoR:"", moldNoL:"", moldNoR:"", jamMulai:"", jamSelesai:"", operator:"", date:new Date().toISOString().slice(0,10) });
+  const [naikForm, setNaikForm]     = useState(emptyNaikForm());
+  const [naikRecords, setNaikRecords] = useState([]);
+
   const role = currentUser?.role || "";
   const showToast = (msg, type="success") => { setToast({msg,type}); setTimeout(()=>setToast(null),2800); };
 
@@ -670,15 +674,49 @@ export default function App() {
     setQcRecords(data||[]);
   },[]);
 
-  useEffect(()=>{ if(currentUser){ loadRecords(); loadPrepRecords(); loadQcRecords(); } },[loadRecords, loadPrepRecords, loadQcRecords, currentUser]);
+  const loadNaikRecords = useCallback(async () => {
+    const { data } = await supabase.from("naik_mold_records").select("*").order("created_at",{ascending:false});
+    setNaikRecords(data||[]);
+  },[]);
+
+  useEffect(()=>{ if(currentUser){ loadRecords(); loadPrepRecords(); loadQcRecords(); loadNaikRecords(); } },[loadRecords, loadPrepRecords, loadQcRecords, loadNaikRecords, currentUser]);
 
   useEffect(()=>{
     if (!currentUser) return;
     const ch1 = supabase.channel("rr").on("postgres_changes",{event:"*",schema:"public",table:"repair_records"},()=>loadRecords()).subscribe();
     const ch2 = supabase.channel("pr").on("postgres_changes",{event:"*",schema:"public",table:"preparation_records"},()=>loadPrepRecords()).subscribe();
     const ch3 = supabase.channel("qr").on("postgres_changes",{event:"*",schema:"public",table:"qc_records"},()=>loadQcRecords()).subscribe();
-    return ()=>{ supabase.removeChannel(ch1); supabase.removeChannel(ch2); supabase.removeChannel(ch3); };
-  },[loadRecords, loadPrepRecords, loadQcRecords, currentUser]);
+    const ch4 = supabase.channel("nr").on("postgres_changes",{event:"*",schema:"public",table:"naik_mold_records"},()=>loadNaikRecords()).subscribe();
+    return ()=>{ supabase.removeChannel(ch1); supabase.removeChannel(ch2); supabase.removeChannel(ch3); supabase.removeChannel(ch4); };
+  },[loadRecords, loadPrepRecords, loadQcRecords, loadNaikRecords, currentUser]);
+
+  const submitNaik = async () => {
+    if (!naikForm.moldSizeNaik.trim()||!naikForm.plant||!naikForm.line||!naikForm.machine||!naikForm.operator.trim()) {
+      showToast("Lengkapi: size mold naik, mesin, dan operator.","error"); return;
+    }
+    const payload = {
+      mold_size_naik:   naikForm.moldSizeNaik.trim().toUpperCase(),
+      mold_size_turun:  naikForm.moldSizeTurun.trim().toUpperCase()||null,
+      plant:            naikForm.plant,
+      line:             naikForm.line,
+      machine:          naikForm.machine,
+      machine_code:     `${naikForm.plant}-${naikForm.line}${naikForm.machine}`,
+      container_no_l:   naikForm.containerNoL.trim().toUpperCase()||null,
+      container_no_r:   naikForm.containerNoR.trim().toUpperCase()||null,
+      mold_no_l:        naikForm.moldNoL.trim().toUpperCase()||null,
+      mold_no_r:        naikForm.moldNoR.trim().toUpperCase()||null,
+      jam_mulai:        naikForm.jamMulai||null,
+      jam_selesai:      naikForm.jamSelesai||null,
+      operator:         naikForm.operator.trim(),
+      date:             naikForm.date,
+      created_by:       currentUser?.id,
+      grup:             currentUser?.username?.startsWith("grup-") ? currentUser.username.replace("grup-","").toUpperCase() : null,
+    };
+    const { error } = await supabase.from("naik_mold_records").insert(payload);
+    if (error) { showToast("Gagal simpan: "+error.message,"error"); return; }
+    showToast("Naik mold berhasil dicatat! ✅");
+    setNaikForm(emptyNaikForm());
+  };
 
   const submitPrepOut = async () => {
     if (!prepForm.moldSize.trim()||!prepForm.moldSerial.trim()||!prepForm.slotLocation.trim()||!prepForm.operator.trim()) {
@@ -1755,11 +1793,129 @@ export default function App() {
 
             {/* NAIK MOLD - Under Development */}
             {page==="naik"&&(
-              <div style={{ display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:400,gap:16 }}>
-                <div style={{ fontSize:56 }}>⬆️</div>
-                <div style={{ fontSize:18,fontWeight:700,color:"#111" }}>Naik Mold</div>
-                <div style={{ background:"#FEF3C7",color:"#92400E",padding:"8px 20px",borderRadius:20,fontSize:13,fontWeight:600 }}>🚧 Under Development</div>
-                <div style={{ fontSize:13,color:"#999",textAlign:"center",maxWidth:280 }}>Fitur ini sedang dalam tahap pengembangan. Segera hadir!</div>
+              <div>
+                {/* FORM NAIK MOLD */}
+                <div className="card" style={{ marginBottom:16 }}>
+                  <div className="card-title" style={{ textAlign:"center",fontSize:16 }}>⬆️ Naik Mold</div>
+                  <div className="form-group">
+                    <label className="form-label">Tanggal *</label>
+                    <input type="date" className="form-input" value={naikForm.date} onChange={e=>setNaikForm(f=>({...f,date:e.target.value}))} />
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="form-label">Size Mold Naik *</label>
+                      <input className="form-input" placeholder="cth: 205/65R15" value={naikForm.moldSizeNaik} onChange={e=>setNaikForm(f=>({...f,moldSizeNaik:e.target.value}))} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Size Mold Turun</label>
+                      <input className="form-input" placeholder="cth: 195/65R15" value={naikForm.moldSizeTurun} onChange={e=>setNaikForm(f=>({...f,moldSizeTurun:e.target.value}))} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* MESIN */}
+                <div className="card" style={{ marginBottom:16 }}>
+                  <div className="card-title" style={{ textAlign:"center" }}>Mesin yang dikerjakan *</div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="form-label">Plant *</label>
+                      <select className="form-input" value={naikForm.plant} onChange={e=>setNaikForm(f=>({...f,plant:e.target.value,line:"",machine:""}))}>
+                        <option value="">— Pilih —</option>
+                        {PLANTS.map(p=><option key={p} value={p}>Plant {p}</option>)}
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Line *</label>
+                      <select className="form-input" value={naikForm.line} onChange={e=>setNaikForm(f=>({...f,line:e.target.value,machine:""}))}>
+                        <option value="">— Pilih —</option>
+                        {LINES.map(l=><option key={l} value={l}>Line {l}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Mesin *</label>
+                    <select className="form-input" value={naikForm.machine} onChange={e=>setNaikForm(f=>({...f,machine:e.target.value}))}>
+                      <option value="">— Pilih —</option>
+                      {(naikForm.plant==="D"?MACHINES_D:naikForm.plant==="K"?MACHINES_K:[]).map(m=><option key={m} value={m}>{m}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                {/* CONTAINER & MOLD */}
+                <div className="card" style={{ marginBottom:16 }}>
+                  <div className="card-title" style={{ textAlign:"center" }}>Nomor Container & Mold</div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="form-label">No Container L</label>
+                      <input className="form-input" placeholder="cth: C-001L" value={naikForm.containerNoL} onChange={e=>setNaikForm(f=>({...f,containerNoL:e.target.value}))} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">No Container R</label>
+                      <input className="form-input" placeholder="cth: C-001R" value={naikForm.containerNoR} onChange={e=>setNaikForm(f=>({...f,containerNoR:e.target.value}))} />
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="form-label">No Mold L</label>
+                      <input className="form-input" placeholder="cth: ML-001" value={naikForm.moldNoL} onChange={e=>setNaikForm(f=>({...f,moldNoL:e.target.value}))} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">No Mold R</label>
+                      <input className="form-input" placeholder="cth: MR-001" value={naikForm.moldNoR} onChange={e=>setNaikForm(f=>({...f,moldNoR:e.target.value}))} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* JAM & OPERATOR */}
+                <div className="card" style={{ marginBottom:16 }}>
+                  <div className="card-title" style={{ textAlign:"center" }}>Jam & Operator</div>
+                  <div className="form-group">
+                    <label className="form-label">Jam pengerjaan</label>
+                    <div style={{ display:"flex",gap:8,alignItems:"center" }}>
+                      <input type="time" className="form-input" value={naikForm.jamMulai} onChange={e=>setNaikForm(f=>({...f,jamMulai:e.target.value}))} />
+                      <span style={{ color:"#999" }}>–</span>
+                      <input type="time" className="form-input" value={naikForm.jamSelesai} onChange={e=>setNaikForm(f=>({...f,jamSelesai:e.target.value}))} />
+                    </div>
+                  </div>
+                  <AutocompleteInput label="Nama operator *" value={naikForm.operator} onChange={v=>setNaikForm(f=>({...f,operator:v}))} suggestions={knownTechs} placeholder="Ketik nama operator..."/>
+                </div>
+
+                <button className="btn-primary" onClick={submitNaik}>⬆️ Simpan Naik Mold</button>
+                <button className="btn-secondary" style={{ marginTop:8 }} onClick={()=>setNaikForm(emptyNaikForm())}>Reset</button>
+
+                {/* LIST RECORD */}
+                <div style={{ marginTop:24,marginBottom:10,fontSize:13,fontWeight:600,color:"#111" }}>
+                  History Naik Mold ({naikRecords.length} record)
+                </div>
+                {naikRecords.length===0&&<div className="card" style={{ textAlign:"center",color:"#999",fontSize:13,padding:24 }}>Belum ada record naik mold.</div>}
+                {naikRecords.map(r=>(
+                  <div key={r.id} className="record-card">
+                    <div className="record-card-header">
+                      <div>
+                        <div className="record-size">⬆️ {r.mold_size_naik}</div>
+                        {r.mold_size_turun&&<div className="record-type">⬇️ Turun: {r.mold_size_turun}</div>}
+                      </div>
+                      <div style={{ fontSize:11,color:"#999",textAlign:"right" }}>
+                        <div>{r.date}</div>
+                        <div>{r.jam_mulai&&r.jam_selesai?`${r.jam_mulai}–${r.jam_selesai}`:""}</div>
+                      </div>
+                    </div>
+                    {r.machine_code&&<div style={{ fontSize:12,fontWeight:600,color:"#1D9E75",marginBottom:6 }}><i className="ti ti-robot" style={{ fontSize:13,marginRight:4 }}></i>{r.machine_code}</div>}
+                    {(r.container_no_l||r.container_no_r)&&(
+                      <div style={{ fontSize:11,color:"#666",marginBottom:4,display:"flex",gap:12 }}>
+                        {r.container_no_l&&<span>Container L: <strong>{r.container_no_l}</strong></span>}
+                        {r.container_no_r&&<span>Container R: <strong>{r.container_no_r}</strong></span>}
+                      </div>
+                    )}
+                    {(r.mold_no_l||r.mold_no_r)&&(
+                      <div style={{ fontSize:11,color:"#666",marginBottom:4,display:"flex",gap:12 }}>
+                        {r.mold_no_l&&<span>Mold L: <strong>{r.mold_no_l}</strong></span>}
+                        {r.mold_no_r&&<span>Mold R: <strong>{r.mold_no_r}</strong></span>}
+                      </div>
+                    )}
+                    <div className="record-meta"><i className="ti ti-user" style={{ fontSize:12,marginRight:4 }}></i>{r.operator}</div>
+                  </div>
+                ))}
               </div>
             )}
 
