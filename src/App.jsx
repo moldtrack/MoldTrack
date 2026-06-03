@@ -614,6 +614,7 @@ export default function App() {
   const [filterTech, setFilterTech]       = useState("");
   const [toast, setToast]     = useState(null);
   const [filterMonth, setFilterMonth]     = useState(new Date().toISOString().slice(0,7));
+  const [naikTab, setNaikTab]             = useState("form");
 
   // persiapan state
   const [prepRecords, setPrepRecords] = useState([]);
@@ -1799,7 +1800,22 @@ export default function App() {
             {/* NAIK MOLD */}
             {page==="naik"&&(
               <div>
-                <div className="card" style={{ marginBottom:16 }}>
+                {/* TAB NAVIGATION */}
+                <div style={{ display:"flex",gap:8,marginBottom:16 }}>
+                  {[["form","⬆️ Input"],["database","📋 Database"]].map(([id,lbl])=>(
+                    <button key={id} onClick={()=>setNaikTab(id)}
+                      style={{ flex:1,padding:"10px",borderRadius:8,border:"1.5px solid",cursor:"pointer",fontSize:13,fontWeight:600,
+                        borderColor:naikTab===id?"#1D9E75":"#e0e0e0",
+                        background:naikTab===id?"#1D9E75":"#fff",
+                        color:naikTab===id?"#fff":"#666" }}>
+                      {lbl}
+                    </button>
+                  ))}
+                </div>
+
+                {/* FORM TAB */}
+                {naikTab==="form"&&(
+                  <div>
                   <div className="card-title" style={{ textAlign:"center",fontSize:16 }}>⬆️ Naik Mold</div>
                   <div className="form-group">
                     <label className="form-label">Tanggal *</label>
@@ -1915,41 +1931,49 @@ export default function App() {
 
                 <button className="btn-primary" onClick={submitNaik}>⬆️ Simpan Naik Mold</button>
                 <button className="btn-secondary" style={{ marginTop:8 }} onClick={()=>setNaikForm(emptyNaikForm())}>Reset</button>
-
-                {/* LIST RECORD */}
-                <div style={{ marginTop:24,marginBottom:10,fontSize:13,fontWeight:600,color:"#111" }}>
-                  History Naik Mold ({naikRecords.length} record)
                 </div>
-                {naikRecords.length===0&&<div className="card" style={{ textAlign:"center",color:"#999",fontSize:13,padding:24 }}>Belum ada record naik mold.</div>}
-                {naikRecords.map(r=>(
-                  <div key={r.id} className="record-card">
-                    <div className="record-card-header">
-                      <div>
-                        <div className="record-size">⬆️ {r.mold_size_naik}</div>
-                        {r.mold_size_turun&&<div className="record-type">⬇️ Turun: {r.mold_size_turun}</div>}
+                )}
+
+                {/* DATABASE TAB */}
+                {naikTab==="database"&&(
+                  <div>
+                    <div style={{ marginBottom:10,fontSize:13,color:"#999" }}>{naikRecords.length} record ditemukan</div>
+                    {naikRecords.length===0&&<div className="card" style={{ textAlign:"center",color:"#999",fontSize:13,padding:24 }}>Belum ada record naik mold.</div>}
+                    {naikRecords.map(r=>(
+                      <div key={r.id} className="record-card">
+                        <div className="record-card-header">
+                          <div>
+                            <div className="record-size">⬆️ {r.mold_size_naik}</div>
+                            {r.mold_size_turun&&<div className="record-type">⬇️ Turun: {r.mold_size_turun}</div>}
+                          </div>
+                          <div style={{ fontSize:11,color:"#999",textAlign:"right" }}>
+                            <div>{r.date}</div>
+                            <div>{r.jam_mulai&&r.jam_selesai?`${r.jam_mulai}–${r.jam_selesai}`:""}</div>
+                          </div>
+                        </div>
+                        {r.machine_code&&<div style={{ fontSize:12,fontWeight:600,color:"#1D9E75",marginBottom:6 }}><i className="ti ti-robot" style={{ fontSize:13,marginRight:4 }}></i>{r.machine_code}</div>}
+                        {(r.container_no_l||r.container_no_r)&&(
+                          <div style={{ fontSize:11,color:"#666",marginBottom:4,display:"flex",gap:12,flexWrap:"wrap" }}>
+                            {r.container_no_l&&<span>Container L(↑): <strong>{r.container_no_l}</strong></span>}
+                            {r.container_no_r&&<span>Container R(↑): <strong>{r.container_no_r}</strong></span>}
+                            {r.turun_container_no_l&&<span>Container L(↓): <strong>{r.turun_container_no_l}</strong></span>}
+                            {r.turun_container_no_r&&<span>Container R(↓): <strong>{r.turun_container_no_r}</strong></span>}
+                          </div>
+                        )}
+                        {(r.mold_no_l||r.mold_no_r)&&(
+                          <div style={{ fontSize:11,color:"#666",marginBottom:4,display:"flex",gap:12,flexWrap:"wrap" }}>
+                            {r.mold_no_l&&<span>Mold L(↑): <strong>{r.mold_no_l}</strong></span>}
+                            {r.mold_no_r&&<span>Mold R(↑): <strong>{r.mold_no_r}</strong></span>}
+                            {r.turun_mold_no_l&&<span>Mold L(↓): <strong>{r.turun_mold_no_l}</strong></span>}
+                            {r.turun_mold_no_r&&<span>Mold R(↓): <strong>{r.turun_mold_no_r}</strong></span>}
+                          </div>
+                        )}
+                        {r.notes&&<div style={{ fontSize:11,color:"#666",marginBottom:4 }}>📝 {r.notes}</div>}
+                        <div className="record-meta"><i className="ti ti-user" style={{ fontSize:12,marginRight:4 }}></i>{r.operator}</div>
                       </div>
-                      <div style={{ fontSize:11,color:"#999",textAlign:"right" }}>
-                        <div>{r.date}</div>
-                        <div>{r.jam_mulai&&r.jam_selesai?`${r.jam_mulai}–${r.jam_selesai}`:""}</div>
-                      </div>
-                    </div>
-                    {r.machine_code&&<div style={{ fontSize:12,fontWeight:600,color:"#1D9E75",marginBottom:6 }}><i className="ti ti-robot" style={{ fontSize:13,marginRight:4 }}></i>{r.machine_code}</div>}
-                    {(r.container_no_l||r.container_no_r)&&(
-                      <div style={{ fontSize:11,color:"#666",marginBottom:4,display:"flex",gap:12 }}>
-                        {r.container_no_l&&<span>Container L(↑): <strong>{r.container_no_l}</strong></span>}
-                        {r.container_no_r&&<span>Container R(↑): <strong>{r.container_no_r}</strong></span>}
-                      </div>
-                    )}
-                    {(r.mold_no_l||r.mold_no_r)&&(
-                      <div style={{ fontSize:11,color:"#666",marginBottom:4,display:"flex",gap:12 }}>
-                        {r.mold_no_l&&<span>Mold L(↑): <strong>{r.mold_no_l}</strong></span>}
-                        {r.mold_no_r&&<span>Mold R(↑): <strong>{r.mold_no_r}</strong></span>}
-                      </div>
-                    )}
-                    {r.notes&&<div style={{ fontSize:11,color:"#666",marginBottom:4 }}>📝 {r.notes}</div>}
-                    <div className="record-meta"><i className="ti ti-user" style={{ fontSize:12,marginRight:4 }}></i>{r.operator}</div>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
             )}
 
