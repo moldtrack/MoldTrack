@@ -62,22 +62,28 @@ const exportToExcel = (records) => {
   };
 
   const rows = records.map((r, i) => ({
-    "No":             i + 1,
-    "Tanggal":        r.date || "",
-    "Size Mold":      r.mold_size || "",
-    "Tipe Mold":      r.mold_type === "segmented" ? "Segmented" : "Two Piece",
-    "Kode Mesin":     r.machine_code || "",
-    "Plant":          r.plant || "",
-    "Line":           r.line || "",
-    "Mesin":          r.machine || "",
-    "Press":          Array.isArray(r.press) ? r.press.join(" & ") : (r.press || ""),
-    "Jenis Problem":  (r.problems||[]).map(getProblemLabel).join(" | "),
-    "Detail Tindakan":getTindakan(r.problems, r.problem_details),
-    "Teknisi":        r.technician || "",
-    "Jam Mulai":      r.jam_mulai || "",
-    "Jam Selesai":    r.jam_selesai || "",
-    "Durasi (menit)": calcDuration(r.jam_mulai, r.jam_selesai),
-    "Catatan":        r.notes || "",
+    "No":               i + 1,
+    "Tanggal":          r.date || "",
+    "Size Mold":        r.mold_size || "",
+    "Tipe Mold":        r.mold_type === "segmented" ? "Segmented" : "Two Piece",
+    "Tipe Container L": r.container_type_l || "",
+    "Tipe Container R": r.container_type_r || "",
+    "No Container L":   r.container_no_l || "",
+    "No Container R":   r.container_no_r || "",
+    "No Mold L":        r.mold_no_l || "",
+    "No Mold R":        r.mold_no_r || "",
+    "Kode Mesin":       r.machine_code || "",
+    "Plant":            r.plant || "",
+    "Line":             r.line || "",
+    "Mesin":            r.machine || "",
+    "Press":            Array.isArray(r.press) ? r.press.join(" & ") : (r.press || ""),
+    "Jenis Problem":    (r.problems||[]).map(getProblemLabel).join(" | "),
+    "Detail Tindakan":  getTindakan(r.problems, r.problem_details),
+    "Teknisi":          r.technician || "",
+    "Jam Mulai":        r.jam_mulai || "",
+    "Jam Selesai":      r.jam_selesai || "",
+    "Durasi (menit)":   calcDuration(r.jam_mulai, r.jam_selesai),
+    "Catatan":          r.notes || "",
   }));
 
   const wb = XLSX.utils.book_new();
@@ -89,6 +95,12 @@ const exportToExcel = (records) => {
     {wch:12},  // Tanggal
     {wch:14},  // Size Mold
     {wch:12},  // Tipe Mold
+    {wch:14},  // Tipe Container L
+    {wch:14},  // Tipe Container R
+    {wch:14},  // No Container L
+    {wch:14},  // No Container R
+    {wch:12},  // No Mold L
+    {wch:12},  // No Mold R
     {wch:12},  // Kode Mesin
     {wch:8},   // Plant
     {wch:8},   // Line
@@ -103,9 +115,8 @@ const exportToExcel = (records) => {
     {wch:40},  // Catatan
   ];
 
-  // Add as Excel Table for PivotTable compatibility
   const lastRow = rows.length + 1;
-  const lastCol = "P";
+  const lastCol = "V";
   ws["!autofilter"] = { ref: `A1:${lastCol}${lastRow}` };
 
   XLSX.utils.book_append_sheet(wb, ws, "Data Perbaikan");
@@ -1138,18 +1149,6 @@ export default function App() {
                       <div style={{ fontSize:11,color:"#999",textAlign:"right" }}><div>{r.date}</div><div>{r.jam_mulai&&r.jam_selesai?`${r.jam_mulai}–${r.jam_selesai}`:""}</div></div>
                     </div>
                     {r.machine_code&&<div style={{ fontSize:12,fontWeight:600,color:"#1D9E75",marginBottom:6 }}><i className="ti ti-robot" style={{ fontSize:13,marginRight:4 }}></i>{r.machine_code}</div>}
-                    {(r.container_type_l||r.container_no_l||r.container_type_r||r.container_no_r)&&(
-                      <div style={{ fontSize:11,color:"#666",marginBottom:6,display:"flex",gap:12 }}>
-                        {(r.container_type_l||r.container_no_l)&&<span>L: {[r.container_type_l,r.container_no_l].filter(Boolean).join(" · ")}</span>}
-                        {(r.container_type_r||r.container_no_r)&&<span>R: {[r.container_type_r,r.container_no_r].filter(Boolean).join(" · ")}</span>}
-                      </div>
-                    )}
-                    {(r.mold_no_l||r.mold_no_r)&&(
-                      <div style={{ fontSize:11,color:"#666",marginBottom:6,display:"flex",gap:12 }}>
-                        {r.mold_no_l&&<span>Mold L: <strong>{r.mold_no_l}</strong></span>}
-                        {r.mold_no_r&&<span>Mold R: <strong>{r.mold_no_r}</strong></span>}
-                      </div>
-                    )}
                     <div style={{ marginBottom:6 }}><DetailSummary rec={{...r,problemDetails:r.problem_details,problems:r.problems||[]}}/></div>
                     <div className="record-meta" style={{ marginBottom:8 }}><i className="ti ti-user" style={{ fontSize:12,marginRight:4 }}></i>{r.technician}</div>
                     <div className="record-actions">
@@ -1190,19 +1189,6 @@ export default function App() {
                     </div>
                   )}
                   <div style={{ fontSize:11,color:"#999",fontWeight:600,marginBottom:8 }}>DETAIL TINDAKAN</div>
-                  {(detailRec.container_type_l||detailRec.container_no_l||detailRec.container_type_r||detailRec.container_no_r||detailRec.mold_no_l||detailRec.mold_no_r)&&(
-                    <div style={{ background:"#f8f8f8",borderRadius:8,padding:"10px 14px",marginBottom:12 }}>
-                      <div style={{ fontSize:10,color:"#999",fontWeight:600,marginBottom:8 }}>CONTAINER & MOLD</div>
-                      <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8 }}>
-                        {detailRec.container_type_l&&<div className="stat-card"><div className="stat-label">Tipe Container L</div><div style={{ fontSize:13,fontWeight:600,color:"#111" }}>{detailRec.container_type_l}</div></div>}
-                        {detailRec.container_type_r&&<div className="stat-card"><div className="stat-label">Tipe Container R</div><div style={{ fontSize:13,fontWeight:600,color:"#111" }}>{detailRec.container_type_r}</div></div>}
-                        {detailRec.container_no_l&&<div className="stat-card"><div className="stat-label">Nomor Container L</div><div style={{ fontSize:13,fontWeight:600,color:"#111" }}>{detailRec.container_no_l}</div></div>}
-                        {detailRec.container_no_r&&<div className="stat-card"><div className="stat-label">Nomor Container R</div><div style={{ fontSize:13,fontWeight:600,color:"#111" }}>{detailRec.container_no_r}</div></div>}
-                        {detailRec.mold_no_l&&<div className="stat-card"><div className="stat-label">Nomor Mold L</div><div style={{ fontSize:13,fontWeight:600,color:"#111" }}>{detailRec.mold_no_l}</div></div>}
-                        {detailRec.mold_no_r&&<div className="stat-card"><div className="stat-label">Nomor Mold R</div><div style={{ fontSize:13,fontWeight:600,color:"#111" }}>{detailRec.mold_no_r}</div></div>}
-                      </div>
-                    </div>
-                  )}
                   {(detailRec.problems||[]).map(pid=>{
                     const det=(detailRec.problem_details||{})[pid];
                     const isMOR=pid.startsWith("MOR"),isOverflow=pid.startsWith("OVERFLOW"),isOS=pid==="OS",isOOR=pid==="OOR";
