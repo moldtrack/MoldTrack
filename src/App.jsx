@@ -628,7 +628,7 @@ export default function App() {
   const emptyQcForm = () => ({ moldSize:"", moldSerial:"", cavityCondition:"", defects:[], status:"ok", repairNotes:"", checker:"", jamMulai:"", jamSelesai:"", date:new Date().toISOString().slice(0,10) });
   const [qcForm, setQcForm]         = useState(emptyQcForm());
 
-  const emptyNaikForm = () => ({ moldSizeNaik:"", moldSizeTurun:"", plant:"", line:"", machine:"", containerNoL:"", containerNoR:"", moldNoL:"", moldNoR:"", jamMulai:"", jamSelesai:"", operator:"", date:new Date().toISOString().slice(0,10) });
+  const emptyNaikForm = () => ({ moldSizeNaik:"", moldSizeTurun:"", plant:"", line:"", machine:"", containerNoL:"", containerNoR:"", moldNoL:"", moldNoR:"", turunContainerNoL:"", turunContainerNoR:"", turunMoldNoL:"", turunMoldNoR:"", jamMulai:"", jamSelesai:"", operator:"", date:new Date().toISOString().slice(0,10) });
   const [naikForm, setNaikForm]     = useState(emptyNaikForm());
   const [naikRecords, setNaikRecords] = useState([]);
 
@@ -696,7 +696,11 @@ export default function App() {
     }
     const payload = {
       mold_size_naik:   naikForm.moldSizeNaik.trim().toUpperCase(),
-      mold_size_turun:  naikForm.moldSizeTurun.trim().toUpperCase()||null,
+      mold_size_turun:      naikForm.moldSizeTurun.trim().toUpperCase()||null,
+      turun_container_no_l: naikForm.turunContainerNoL.trim().toUpperCase()||null,
+      turun_container_no_r: naikForm.turunContainerNoR.trim().toUpperCase()||null,
+      turun_mold_no_l:      naikForm.turunMoldNoL.trim().toUpperCase()||null,
+      turun_mold_no_r:      naikForm.turunMoldNoR.trim().toUpperCase()||null,
       plant:            naikForm.plant,
       line:             naikForm.line,
       machine:          naikForm.machine,
@@ -1811,6 +1815,30 @@ export default function App() {
                       <input className="form-input" placeholder="cth: 195/65R15" value={naikForm.moldSizeTurun} onChange={e=>setNaikForm(f=>({...f,moldSizeTurun:e.target.value}))} />
                     </div>
                   </div>
+                  {naikForm.moldSizeTurun&&(
+                    <>
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label className="form-label">No Container L (Turun)</label>
+                          <input className="form-input" placeholder="cth: C-001L" value={naikForm.turunContainerNoL} onChange={e=>setNaikForm(f=>({...f,turunContainerNoL:e.target.value}))} />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">No Container R (Turun)</label>
+                          <input className="form-input" placeholder="cth: C-001R" value={naikForm.turunContainerNoR} onChange={e=>setNaikForm(f=>({...f,turunContainerNoR:e.target.value}))} />
+                        </div>
+                      </div>
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label className="form-label">No Mold L (Turun)</label>
+                          <input className="form-input" placeholder="cth: ML-001" value={naikForm.turunMoldNoL} onChange={e=>setNaikForm(f=>({...f,turunMoldNoL:e.target.value}))} />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">No Mold R (Turun)</label>
+                          <input className="form-input" placeholder="cth: MR-001" value={naikForm.turunMoldNoR} onChange={e=>setNaikForm(f=>({...f,turunMoldNoR:e.target.value}))} />
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* MESIN */}
