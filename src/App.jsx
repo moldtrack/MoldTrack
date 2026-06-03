@@ -22,7 +22,9 @@ const LINES    = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N"];
 const MACHINES_D = Array.from({length:15},(_,i)=>String(i+1).padStart(2,"0"));   // 01-15
 const MACHINES_K = Array.from({length:10},(_,i)=>String(i+21).padStart(2,"0"));  // 21-30
 const getMachines = (plant) => plant==="K" ? MACHINES_K : MACHINES_D;
-const PRESSES  = ["L","R"];
+const MAKER_CONTAINER = ["Greatoo","Seahwa","Himille","Sumhing","Herbert","AZ German","Tyangyang"];
+const TYPE_CONTAINER  = ["S-TYPE","AZIII/2","AZIII","AZIV","L46","L48","AZ V","AW 200"];
+
 const ROLES    = ["teknisi","persiapan","qcgate","analyst","adh","dh","admin"];
 
 // ── EXPORT TO EXCEL ───────────────────────────────────────────────────────────
@@ -65,9 +67,10 @@ const exportToExcel = (records) => {
     "No":               i + 1,
     "Tanggal":          r.date || "",
     "Size Mold":        r.mold_size || "",
-    "Tipe Mold":        r.mold_type === "segmented" ? "Segmented" : "Two Piece",
-    "Tipe Container L": r.container_type_l || "",
-    "Tipe Container R": r.container_type_r || "",
+    "Maker Container L":r.maker_container_l || "",
+    "Maker Container R":r.maker_container_r || "",
+    "Type Container L": r.type_container_l || "",
+    "Type Container R": r.type_container_r || "",
     "No Container L":   r.container_no_l || "",
     "No Container R":   r.container_no_r || "",
     "No Mold L":        r.mold_no_l || "",
@@ -94,9 +97,10 @@ const exportToExcel = (records) => {
     {wch:5},   // No
     {wch:12},  // Tanggal
     {wch:14},  // Size Mold
-    {wch:12},  // Tipe Mold
-    {wch:14},  // Tipe Container L
-    {wch:14},  // Tipe Container R
+    {wch:16},  // Maker Container L
+    {wch:16},  // Maker Container R
+    {wch:14},  // Type Container L
+    {wch:14},  // Type Container R
     {wch:14},  // No Container L
     {wch:14},  // No Container R
     {wch:12},  // No Mold L
@@ -116,7 +120,7 @@ const exportToExcel = (records) => {
   ];
 
   const lastRow = rows.length + 1;
-  const lastCol = "V";
+  const lastCol = "W";
   ws["!autofilter"] = { ref: `A1:${lastCol}${lastRow}` };
 
   XLSX.utils.book_append_sheet(wb, ws, "Data Perbaikan");
@@ -143,8 +147,9 @@ const emptyProblemDetail = (pid) => {
   return {};
 };
 const emptyForm = () => ({
-  moldSize:"", moldType:"segmented",
-  containerTypeL:"", containerTypeR:"", containerNoL:"", containerNoR:"", moldNoL:"", moldNoR:"",
+  moldSize:"",
+  makerContainerL:"", makerContainerR:"", typeContainerL:"", typeContainerR:"",
+  containerNoL:"", containerNoR:"", moldNoL:"", moldNoR:"",
   date:new Date().toISOString().slice(0,10),
   jamMulai:"", jamSelesai:"",
   technician:"",
@@ -750,9 +755,9 @@ export default function App() {
       showToast("Lengkapi: plant, line, mesin, dan press.","error"); return;
     }
     const payload={
-      mold_size:form.moldSize.trim().toUpperCase(), mold_type:form.moldType,
-      container_type_l:form.containerTypeL.trim(),
-      container_type_r:form.containerTypeR.trim(),
+      mold_size:form.moldSize.trim().toUpperCase(),
+      maker_container_l:form.makerContainerL, maker_container_r:form.makerContainerR,
+      type_container_l:form.typeContainerL,   type_container_r:form.typeContainerR,
       container_no_l:form.containerNoL.trim().toUpperCase(),
       container_no_r:form.containerNoR.trim().toUpperCase(),
       mold_no_l:form.moldNoL.trim().toUpperCase(),
@@ -777,7 +782,7 @@ export default function App() {
 
   const startEdit = (rec) => {
     const pressVal = Array.isArray(rec.press) ? rec.press : (rec.press ? [rec.press] : []);
-    setForm({moldSize:rec.mold_size,moldType:rec.mold_type,containerTypeL:rec.container_type_l||"",containerTypeR:rec.container_type_r||"",containerNoL:rec.container_no_l||"",containerNoR:rec.container_no_r||"",moldNoL:rec.mold_no_l||"",moldNoR:rec.mold_no_r||"",date:rec.date,jamMulai:rec.jam_mulai||"",jamSelesai:rec.jam_selesai||"",technician:rec.technician,plant:rec.plant||"",line:rec.line||"",machine:rec.machine||"",press:pressVal,problems:rec.problems||[],problemDetails:rec.problem_details||{},notes:rec.notes||""});
+    setForm({moldSize:rec.mold_size,makerContainerL:rec.maker_container_l||"",makerContainerR:rec.maker_container_r||"",typeContainerL:rec.type_container_l||"",typeContainerR:rec.type_container_r||"",containerNoL:rec.container_no_l||"",containerNoR:rec.container_no_r||"",moldNoL:rec.mold_no_l||"",moldNoR:rec.mold_no_r||"",date:rec.date,jamMulai:rec.jam_mulai||"",jamSelesai:rec.jam_selesai||"",technician:rec.technician,plant:rec.plant||"",line:rec.line||"",machine:rec.machine||"",press:pressVal,problems:rec.problems||[],problemDetails:rec.problem_details||{},notes:rec.notes||""});
     setEditId(rec.id);setPage("entry");
   };
 
@@ -975,25 +980,37 @@ export default function App() {
                       <input type="date" className="form-input" value={form.date} onChange={e=>setForm(f=>({...f,date:e.target.value}))}/>
                     </div>
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Tipe mold *</label>
-                    <div className="type-btn-group">
-                      {[["segmented","Segmented (A–H)"],["two_piece","Two Piece"]].map(([val,lbl])=>(
-                        <button key={val} className={`type-btn${form.moldType===val?" active":""}`} onClick={()=>setForm(f=>({...f,moldType:val}))}>
-                          {lbl}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
                   <AutocompleteInput label="Nama teknisi *" value={form.technician} onChange={v=>setForm(f=>({...f,technician:v}))} suggestions={knownTechs} placeholder="Ketik nama kamu..."/>
                   <div className="form-row">
                     <div className="form-group">
-                      <label className="form-label">Tipe Container L</label>
-                      <input className="form-input" placeholder="cth: Sumhing" value={form.containerTypeL} onChange={e=>setForm(f=>({...f,containerTypeL:e.target.value}))} />
+                      <label className="form-label">Maker Container L</label>
+                      <select className="form-input" value={form.makerContainerL} onChange={e=>setForm(f=>({...f,makerContainerL:e.target.value}))}>
+                        <option value="">— Pilih —</option>
+                        {MAKER_CONTAINER.map(m=><option key={m} value={m}>{m}</option>)}
+                      </select>
                     </div>
                     <div className="form-group">
-                      <label className="form-label">Tipe Container R</label>
-                      <input className="form-input" placeholder="cth: Greatoo" value={form.containerTypeR} onChange={e=>setForm(f=>({...f,containerTypeR:e.target.value}))} />
+                      <label className="form-label">Maker Container R</label>
+                      <select className="form-input" value={form.makerContainerR} onChange={e=>setForm(f=>({...f,makerContainerR:e.target.value}))}>
+                        <option value="">— Pilih —</option>
+                        {MAKER_CONTAINER.map(m=><option key={m} value={m}>{m}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="form-label">Type Container L</label>
+                      <select className="form-input" value={form.typeContainerL} onChange={e=>setForm(f=>({...f,typeContainerL:e.target.value}))}>
+                        <option value="">— Pilih —</option>
+                        {TYPE_CONTAINER.map(t=><option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Type Container R</label>
+                      <select className="form-input" value={form.typeContainerR} onChange={e=>setForm(f=>({...f,typeContainerR:e.target.value}))}>
+                        <option value="">— Pilih —</option>
+                        {TYPE_CONTAINER.map(t=><option key={t} value={t}>{t}</option>)}
+                      </select>
                     </div>
                   </div>
                   <div className="form-row">
