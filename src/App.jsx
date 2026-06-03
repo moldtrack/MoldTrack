@@ -133,7 +133,7 @@ const emptyProblemDetail = (pid) => {
 };
 const emptyForm = () => ({
   moldSize:"", moldType:"segmented",
-  containerTypeL:"", containerTypeR:"", containerNoL:"", containerNoR:"", moldNoL:"", moldNoR:"",
+  containerNoL:"", containerNoR:"", moldNoL:"", moldNoR:"",
   date:new Date().toISOString().slice(0,10),
   jamMulai:"", jamSelesai:"",
   technician:"",
@@ -740,8 +740,6 @@ export default function App() {
     }
     const payload={
       mold_size:form.moldSize.trim().toUpperCase(), mold_type:form.moldType,
-      container_type_l:form.containerTypeL.trim(),
-      container_type_r:form.containerTypeR.trim(),
       container_no_l:form.containerNoL.trim().toUpperCase(),
       container_no_r:form.containerNoR.trim().toUpperCase(),
       mold_no_l:form.moldNoL.trim().toUpperCase(),
@@ -766,7 +764,7 @@ export default function App() {
 
   const startEdit = (rec) => {
     const pressVal = Array.isArray(rec.press) ? rec.press : (rec.press ? [rec.press] : []);
-    setForm({moldSize:rec.mold_size,moldType:rec.mold_type,containerNoL:rec.container_no_l||"",containerNoR:rec.container_no_r||"",containerTypeL:rec.container_type_l||"",containerTypeR:rec.container_type_r||"",moldNoL:rec.mold_no_l||"",moldNoR:rec.mold_no_r||"",date:rec.date,jamMulai:rec.jam_mulai||"",jamSelesai:rec.jam_selesai||"",technician:rec.technician,plant:rec.plant||"",line:rec.line||"",machine:rec.machine||"",press:pressVal,problems:rec.problems||[],problemDetails:rec.problem_details||{},notes:rec.notes||""});
+    setForm({moldSize:rec.mold_size,moldType:rec.mold_type,containerNoL:rec.container_no_l||"",containerNoR:rec.container_no_r||"",moldNoL:rec.mold_no_l||"",moldNoR:rec.mold_no_r||"",date:rec.date,jamMulai:rec.jam_mulai||"",jamSelesai:rec.jam_selesai||"",technician:rec.technician,plant:rec.plant||"",line:rec.line||"",machine:rec.machine||"",press:pressVal,problems:rec.problems||[],problemDetails:rec.problem_details||{},notes:rec.notes||""});
     setEditId(rec.id);setPage("entry");
   };
 
@@ -977,16 +975,6 @@ export default function App() {
                   <AutocompleteInput label="Nama teknisi *" value={form.technician} onChange={v=>setForm(f=>({...f,technician:v}))} suggestions={knownTechs} placeholder="Ketik nama kamu..."/>
                   <div className="form-row">
                     <div className="form-group">
-                      <label className="form-label">Tipe Container L</label>
-                      <input className="form-input" placeholder="cth: Sumhing" value={form.containerTypeL} onChange={e=>setForm(f=>({...f,containerTypeL:e.target.value}))} />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Tipe Container R</label>
-                      <input className="form-input" placeholder="cth: Greatoo" value={form.containerTypeR} onChange={e=>setForm(f=>({...f,containerTypeR:e.target.value}))} />
-                    </div>
-                  </div>
-                  <div className="form-row">
-                    <div className="form-group">
                       <label className="form-label">Nomor Container L</label>
                       <input className="form-input" placeholder="cth: C-001L" value={form.containerNoL} onChange={e=>setForm(f=>({...f,containerNoL:e.target.value}))} />
                     </div>
@@ -1150,6 +1138,18 @@ export default function App() {
                       <div style={{ fontSize:11,color:"#999",textAlign:"right" }}><div>{r.date}</div><div>{r.jam_mulai&&r.jam_selesai?`${r.jam_mulai}–${r.jam_selesai}`:""}</div></div>
                     </div>
                     {r.machine_code&&<div style={{ fontSize:12,fontWeight:600,color:"#1D9E75",marginBottom:6 }}><i className="ti ti-robot" style={{ fontSize:13,marginRight:4 }}></i>{r.machine_code}</div>}
+                    {(r.container_type_l||r.container_no_l||r.container_type_r||r.container_no_r)&&(
+                      <div style={{ fontSize:11,color:"#666",marginBottom:6,display:"flex",gap:12 }}>
+                        {(r.container_type_l||r.container_no_l)&&<span>L: {[r.container_type_l,r.container_no_l].filter(Boolean).join(" · ")}</span>}
+                        {(r.container_type_r||r.container_no_r)&&<span>R: {[r.container_type_r,r.container_no_r].filter(Boolean).join(" · ")}</span>}
+                      </div>
+                    )}
+                    {(r.mold_no_l||r.mold_no_r)&&(
+                      <div style={{ fontSize:11,color:"#666",marginBottom:6,display:"flex",gap:12 }}>
+                        {r.mold_no_l&&<span>Mold L: <strong>{r.mold_no_l}</strong></span>}
+                        {r.mold_no_r&&<span>Mold R: <strong>{r.mold_no_r}</strong></span>}
+                      </div>
+                    )}
                     <div style={{ marginBottom:6 }}><DetailSummary rec={{...r,problemDetails:r.problem_details,problems:r.problems||[]}}/></div>
                     <div className="record-meta" style={{ marginBottom:8 }}><i className="ti ti-user" style={{ fontSize:12,marginRight:4 }}></i>{r.technician}</div>
                     <div className="record-actions">
@@ -1190,6 +1190,19 @@ export default function App() {
                     </div>
                   )}
                   <div style={{ fontSize:11,color:"#999",fontWeight:600,marginBottom:8 }}>DETAIL TINDAKAN</div>
+                  {(detailRec.container_type_l||detailRec.container_no_l||detailRec.container_type_r||detailRec.container_no_r||detailRec.mold_no_l||detailRec.mold_no_r)&&(
+                    <div style={{ background:"#f8f8f8",borderRadius:8,padding:"10px 14px",marginBottom:12 }}>
+                      <div style={{ fontSize:10,color:"#999",fontWeight:600,marginBottom:8 }}>CONTAINER & MOLD</div>
+                      <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8 }}>
+                        {detailRec.container_type_l&&<div className="stat-card"><div className="stat-label">Tipe Container L</div><div style={{ fontSize:13,fontWeight:600,color:"#111" }}>{detailRec.container_type_l}</div></div>}
+                        {detailRec.container_type_r&&<div className="stat-card"><div className="stat-label">Tipe Container R</div><div style={{ fontSize:13,fontWeight:600,color:"#111" }}>{detailRec.container_type_r}</div></div>}
+                        {detailRec.container_no_l&&<div className="stat-card"><div className="stat-label">Nomor Container L</div><div style={{ fontSize:13,fontWeight:600,color:"#111" }}>{detailRec.container_no_l}</div></div>}
+                        {detailRec.container_no_r&&<div className="stat-card"><div className="stat-label">Nomor Container R</div><div style={{ fontSize:13,fontWeight:600,color:"#111" }}>{detailRec.container_no_r}</div></div>}
+                        {detailRec.mold_no_l&&<div className="stat-card"><div className="stat-label">Nomor Mold L</div><div style={{ fontSize:13,fontWeight:600,color:"#111" }}>{detailRec.mold_no_l}</div></div>}
+                        {detailRec.mold_no_r&&<div className="stat-card"><div className="stat-label">Nomor Mold R</div><div style={{ fontSize:13,fontWeight:600,color:"#111" }}>{detailRec.mold_no_r}</div></div>}
+                      </div>
+                    </div>
+                  )}
                   {(detailRec.problems||[]).map(pid=>{
                     const det=(detailRec.problem_details||{})[pid];
                     const isMOR=pid.startsWith("MOR"),isOverflow=pid.startsWith("OVERFLOW"),isOS=pid==="OS",isOOR=pid==="OOR";
