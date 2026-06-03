@@ -135,8 +135,14 @@ const canDashboard   = (r) => ["analyst","adh","dh","admin"].includes(r);
 const canDatabase    = (r) => ["analyst","adh","dh","admin","teknisi"].includes(r);
 const canPersiapan   = (r) => ["persiapan","analyst","adh","dh","admin"].includes(r);
 const canQCGate      = (r) => ["qcgate","analyst","adh","dh","admin"].includes(r);
+const canNaik        = (r) => ["naik","analyst","adh","dh","admin"].includes(r);
 const canEntry       = (r) => ["teknisi","analyst","adh","dh","admin"].includes(r);
 const canManageUsers = (r) => r === "admin";
+const getGrup = (username) => {
+  if (!username) return null;
+  const match = username.match(/-(a|b|c|d)$/i);
+  return match ? match[1].toUpperCase() : null;
+};
 const canDeleteEdit  = (r, recordUserId, currentUserId) =>
   r === "admin" || recordUserId === currentUserId;
 
@@ -648,6 +654,7 @@ export default function App() {
     if (user.role === "teknisi")        setPage("entry");
     else if (user.role === "persiapan") setPage("persiapan");
     else if (user.role === "qcgate")    setPage("qcgate");
+    else if (user.role === "naik")      setPage("naik");
     else setPage("dashboard");
   };
 
@@ -716,7 +723,7 @@ export default function App() {
       date:             naikForm.date,
       notes:            naikForm.notes||null,
       created_by:       currentUser?.id,
-      grup:             currentUser?.username?.startsWith("grup-") ? currentUser.username.replace("grup-","").toUpperCase() : null,
+      grup:             getGrup(currentUser?.username),
     };
     const { error } = await supabase.from("naik_mold_records").insert(payload);
     if (error) { showToast("Gagal simpan: "+error.message,"error"); return; }
@@ -737,7 +744,7 @@ export default function App() {
       notes: prepForm.notes,
       status: "keluar",
       created_by: currentUser?.id,
-      grup: currentUser?.username?.startsWith("grup-") ? currentUser.username.replace("grup-","").toUpperCase() : null,
+      grup: getGrup(currentUser?.username),
     };
     const { error } = await supabase.from("preparation_records").insert(payload);
     if (error) { showToast("Gagal simpan: "+error.message,"error"); return; }
@@ -768,7 +775,7 @@ export default function App() {
       jam_selesai:      qcForm.jamSelesai,
       date:             qcForm.date,
       created_by:       currentUser?.id,
-      grup: currentUser?.username?.startsWith("grup-") ? currentUser.username.replace("grup-","").toUpperCase() : null,
+      grup: getGrup(currentUser?.username),
     };
     const { error } = await supabase.from("qc_records").insert(payload);
     if (error) { showToast("Gagal simpan: "+error.message,"error"); return; }
@@ -815,7 +822,7 @@ export default function App() {
       machine_code:machineCode(form), plant:form.plant, line:form.line, machine:form.machine, press:form.press,
       problems:form.problems, problem_details:form.problemDetails, notes:form.notes,
       created_by: currentUser?.id,
-      grup: currentUser?.username?.startsWith("grup-") ? currentUser.username.replace("grup-","").toUpperCase() : null,
+      grup: getGrup(currentUser?.username),
     };
     if(editId){
       const{error}=await supabase.from("repair_records").update(payload).eq("id",editId);
@@ -872,8 +879,8 @@ export default function App() {
     ...(canQCGate(role)      ? [["qcgate","ti-clipboard-check","QC Gate"]] : []),
     ...(canDashboard(role)||canQCGate(role)||canPersiapan(role) ? [
       ["rakit","ti-tools","Rakit Mold"],
-      ["naik","ti-arrow-up","Naik Mold"],
     ] : []),
+    ...(canNaik(role)        ? [["naik","ti-arrow-up","Naik Mold"]] : []),
     ...(canManageUsers(role) ? [["users","ti-users","Users"]] : []),
   ];
 
@@ -1802,7 +1809,7 @@ export default function App() {
             )}
 
             {/* NAIK MOLD */}
-            {page==="naik"&&(
+            {page==="naik"&&canNaik(role)&&(
               <div>
                 {/* TAB NAVIGATION */}
                 <div style={{ display:"flex",gap:8,marginBottom:16 }}>
