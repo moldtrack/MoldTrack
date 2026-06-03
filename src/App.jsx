@@ -909,63 +909,199 @@ export default function App() {
             {/* DASHBOARD */}
             {page==="dashboard"&&canDashboard(role)&&(
               <div>
-                <div className="stat-grid">
-                  {[
-                    {label:"Total record",val:records.length,sub:`${todayRecs.length} hari ini`},
-                    {label:"Teknisi aktif",val:knownTechs.length,sub:"total teknisi"},
-                    {label:"Size tercatat",val:knownSizes.length,sub:"jenis mold"},
-                    {label:"Bulan ini",val:records.filter(r=>r.date?.startsWith(new Date().toISOString().slice(0,7))).length,sub:new Date().toLocaleString("id-ID",{month:"short",year:"numeric"})},
-                  ].map((c,i)=>(
-                    <div key={i} className="stat-card">
-                      <div className="stat-label">{c.label}</div>
-                      <div className="stat-val">{c.val}</div>
-                      <div className="stat-sub">{c.sub}</div>
-                    </div>
-                  ))}
-                </div>
-                <div className="dashboard-charts">
-                  <div className="card">
-                    <div className="card-title">Distribusi problem</div>
-                    {problemCounts.filter(p=>p.count>0).length===0&&<div style={{ fontSize:12,color:"#999" }}>Belum ada data.</div>}
-                    {problemCounts.filter(p=>p.count>0).map(p=>(
-                      <div key={p.id} className="bar-row">
-                        <div className="bar-row-header"><span>{p.label}</span><span style={{ fontWeight:600,color:"#111" }}>{p.count}</span></div>
-                        <div className="bar-track"><div className="bar-fill" style={{ width:`${Math.round((p.count/records.length)*100)}%` }}></div></div>
+                {/* FILTER PERIODE */}
+                {(()=>{
+                  const now = new Date();
+                  const thisMonth = now.toISOString().slice(0,7);
+                  const [filterMonth, setFilterMonth] = useState(thisMonth);
+                  const filtered = filterMonth==="all" ? records : records.filter(r=>r.date?.startsWith(filterMonth));
+                  const todayStr = now.toISOString().slice(0,10);
+                  const todayFiltered = filtered.filter(r=>r.date===todayStr);
+
+                  // Problem counts
+                  const probCounts = PROBLEMS.map(p=>({
+                    label:p.label, id:p.id,
+                    count:filtered.filter(r=>(r.problems||[]).includes(p.id)).length
+                  })).filter(p=>p.count>0).sort((a,b)=>b.count-a.count);
+
+                  // Teknisi counts
+                  const techCounts = [...new Set(filtered.map(r=>r.technician).filter(Boolean))]
+                    .map(t=>({name:t, count:filtered.filter(r=>r.technician===t).length}))
+                    .sort((a,b)=>b.count-a.count);
+
+                  // Maker container counts
+                  const makerCounts = {};
+                  filtered.forEach(r=>{
+                    if(r.maker_container_l) makerCounts[r.maker_container_l]=(makerCounts[r.maker_container_l]||0)+1;
+                    if(r.maker_container_r) makerCounts[r.maker_container_r]=(makerCounts[r.maker_container_r]||0)+1;
+                  });
+                  const makerArr = Object.entries(makerCounts).map(([name,count])=>({name,count})).sort((a,b)=>b.count-a.count);
+
+                  // Plant counts
+                  const plantD = filtered.filter(r=>r.plant==="D").length;
+                  const plantK = filtered.filter(r=>r.plant==="K").length;
+
+                  // Tren 7 hari terakhir
+                  const last7 = Array.from({length:7},(_,i)=>{
+                    const d = new Date(now); d.setDate(d.getDate()-i);
+                    const ds = d.toISOString().slice(0,10);
+                    return {date:ds.slice(5), count:records.filter(r=>r.date===ds).length};
+                  }).reverse();
+                  const maxTren = Math.max(...last7.map(d=>d.count), 1);
+
+                  // Avg durasi
+                  const durations = filtered.map(r=>{
+                    if(!r.jam_mulai||!r.jam_selesai) return null;
+                    const [h1,m1]=r.jam_mulai.split(":").map(Number);
+                    const [h2,m2]=r.jam_selesai.split(":").map(Number);
+                    const d=(h2*60+m2)-(h1*60+m1);
+                    return d>0?d:null;
+                  }).filter(Boolean);
+                  const avgDur = durations.length ? Math.round(durations.reduce((a,b)=>a+b,0)/durations.length) : 0;
+
+                  return (
+                    <div>
+                      {/* FILTER BAR */}
+                      <div style={{ display:"flex",gap:8,marginBottom:16,alignItems:"center",flexWrap:"wrap" }}>
+                        <div style={{ fontSize:13,fontWeight:600,color:"#111",marginRight:4 }}>Periode:</div>
+                        {[
+                          [thisMonth,"Bulan ini"],
+                          [new Date(now.getFullYear(),now.getMonth()-1).toISOString().slice(0,7),"Bulan lalu"],
+                          ["all","Semua data"]
+                        ].map(([val,lbl])=>(
+                          <button key={val} onClick={()=>setFilterMonth(val)}
+                            style={{ padding:"6px 14px",borderRadius:20,border:"1.5px solid",fontSize:12,cursor:"pointer",
+                              borderColor:filterMonth===val?"#1D9E75":"#e0e0e0",
+                              background:filterMonth===val?"#1D9E75":"#fff",
+                              color:filterMonth===val?"#fff":"#666",fontWeight:filterMonth===val?600:400 }}>
+                            {lbl}
+                          </button>
+                        ))}
+                        <input type="month" value={filterMonth==="all"?"":filterMonth}
+                          onChange={e=>setFilterMonth(e.target.value||"all")}
+                          style={{ padding:"5px 10px",borderRadius:8,border:"1.5px solid #e0e0e0",fontSize:12,color:"#111" }}/>
                       </div>
-                    ))}
-                  </div>
-                  <div className="card">
-                    <div className="card-title">Aktivitas teknisi</div>
-                    {knownTechs.length===0&&<div style={{ fontSize:12,color:"#999" }}>Belum ada data.</div>}
-                    {knownTechs.map(t=>{
-                      const cnt=records.filter(r=>r.technician===t).length;
-                      return(
-                        <div key={t} className="bar-row">
-                          <div className="bar-row-header"><span>{t}</span><span style={{ fontWeight:600,color:"#111" }}>{cnt}</span></div>
-                          <div className="bar-track"><div className="bar-fill" style={{ width:records.length?`${Math.round((cnt/records.length)*100)}%`:"0%" }}></div></div>
+
+                      {/* STAT CARDS */}
+                      <div className="stat-grid" style={{ gridTemplateColumns:"repeat(4,1fr)",marginBottom:16 }}>
+                        {[
+                          {label:"Total Perbaikan",val:filtered.length,sub:filterMonth==="all"?"semua waktu":filterMonth,icon:"ti-tools"},
+                          {label:"Hari ini",val:todayFiltered.length,sub:todayStr,icon:"ti-calendar-today"},
+                          {label:"Rata-rata durasi",val:avgDur?`${avgDur} mnt`:"-",sub:"per perbaikan",icon:"ti-clock"},
+                          {label:"Teknisi aktif",val:techCounts.length,sub:"orang",icon:"ti-users"},
+                        ].map((c,i)=>(
+                          <div key={i} className="stat-card" style={{ textAlign:"center" }}>
+                            <i className={`ti ${c.icon}`} style={{ fontSize:22,color:"#1D9E75",marginBottom:6,display:"block" }}></i>
+                            <div className="stat-label">{c.label}</div>
+                            <div className="stat-val">{c.val}</div>
+                            <div className="stat-sub">{c.sub}</div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* TREN 7 HARI */}
+                      <div className="card" style={{ marginBottom:16 }}>
+                        <div className="card-title">📈 Tren Perbaikan 7 Hari Terakhir</div>
+                        <div style={{ display:"flex",alignItems:"flex-end",gap:8,height:80,marginTop:8 }}>
+                          {last7.map((d,i)=>(
+                            <div key={i} style={{ flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4 }}>
+                              <div style={{ fontSize:11,fontWeight:600,color:"#1D9E75" }}>{d.count||""}</div>
+                              <div style={{ width:"100%",background:d.count?"#1D9E75":"#e0e0e0",borderRadius:"4px 4px 0 0",
+                                height:`${Math.round((d.count/maxTren)*60)+4}px`,minHeight:4,transition:"height 0.3s" }}></div>
+                              <div style={{ fontSize:10,color:"#999" }}>{d.date}</div>
+                            </div>
+                          ))}
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
-                <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10 }}>
-                  <div style={{ fontSize:13,fontWeight:600,color:"#111" }}>Record terbaru</div>
-                  <button className="btn-primary" style={{ width:"auto",padding:"8px 16px",margin:0 }} onClick={()=>navTo("entry")}>
-                    <i className="ti ti-plus" style={{ marginRight:4 }}></i>Entry baru
-                  </button>
-                </div>
-                {records.length===0&&<div className="card" style={{ textAlign:"center",color:"#999",fontSize:13,padding:24 }}>Belum ada record.</div>}
-                {records.slice(0,5).map(r=>(
-                  <div key={r.id} className="record-card" onClick={()=>{setDetailId(r.id);setPage("detail");}}>
-                    <div className="record-card-header">
-                      <div><div className="record-size">{r.mold_size}</div><div className="record-type">{r.mold_type==="segmented"?"Segmented":"Two Piece"}</div></div>
-                      <div style={{ fontSize:11,color:"#999",textAlign:"right" }}><div>{r.date}</div><div>{r.jam_mulai&&r.jam_selesai?`${r.jam_mulai}–${r.jam_selesai}`:""}</div></div>
+                      </div>
+
+                      {/* CHARTS ROW 1 */}
+                      <div className="dashboard-charts" style={{ marginBottom:16 }}>
+                        {/* Problem distribution */}
+                        <div className="card">
+                          <div className="card-title">🔧 Distribusi Problem</div>
+                          {probCounts.length===0&&<div style={{ fontSize:12,color:"#999" }}>Belum ada data.</div>}
+                          {probCounts.map(p=>(
+                            <div key={p.id} className="bar-row">
+                              <div className="bar-row-header"><span style={{ fontSize:11 }}>{p.label}</span><span style={{ fontWeight:600,color:"#111" }}>{p.count}</span></div>
+                              <div className="bar-track"><div className="bar-fill" style={{ width:`${Math.round((p.count/filtered.length)*100)}%` }}></div></div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Aktivitas teknisi */}
+                        <div className="card">
+                          <div className="card-title">👷 Aktivitas Teknisi</div>
+                          {techCounts.length===0&&<div style={{ fontSize:12,color:"#999" }}>Belum ada data.</div>}
+                          {techCounts.map(t=>(
+                            <div key={t.name} className="bar-row">
+                              <div className="bar-row-header"><span>{t.name}</span><span style={{ fontWeight:600,color:"#111" }}>{t.count}</span></div>
+                              <div className="bar-track"><div className="bar-fill" style={{ width:`${Math.round((t.count/filtered.length)*100)}%` }}></div></div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* CHARTS ROW 2 */}
+                      <div className="dashboard-charts" style={{ marginBottom:16 }}>
+                        {/* Maker container */}
+                        <div className="card">
+                          <div className="card-title">🏭 Maker Container</div>
+                          {makerArr.length===0&&<div style={{ fontSize:12,color:"#999" }}>Belum ada data.</div>}
+                          {makerArr.map(m=>(
+                            <div key={m.name} className="bar-row">
+                              <div className="bar-row-header"><span>{m.name}</span><span style={{ fontWeight:600,color:"#111" }}>{m.count}</span></div>
+                              <div className="bar-track"><div className="bar-fill" style={{ width:`${Math.round((m.count/Math.max(...makerArr.map(x=>x.count)))*100)}%`,background:"#3B82F6" }}></div></div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Plant distribution */}
+                        <div className="card">
+                          <div className="card-title">🏗️ Distribusi Plant</div>
+                          {filtered.length===0&&<div style={{ fontSize:12,color:"#999" }}>Belum ada data.</div>}
+                          {[{name:"Plant D",count:plantD},{name:"Plant K",count:plantK}].map(p=>(
+                            <div key={p.name} className="bar-row">
+                              <div className="bar-row-header"><span>{p.name}</span><span style={{ fontWeight:600,color:"#111" }}>{p.count}</span></div>
+                              <div className="bar-track"><div className="bar-fill" style={{ width:filtered.length?`${Math.round((p.count/filtered.length)*100)}%`:"0%",background:"#F59E0B" }}></div></div>
+                            </div>
+                          ))}
+                          {/* Per line breakdown */}
+                          <div style={{ marginTop:12,fontSize:11,color:"#999",fontWeight:600 }}>PER LINE</div>
+                          {LINES.map(l=>{
+                            const cnt=filtered.filter(r=>r.line===l).length;
+                            if(!cnt) return null;
+                            return(
+                              <div key={l} className="bar-row">
+                                <div className="bar-row-header"><span>Line {l}</span><span style={{ fontWeight:600,color:"#111" }}>{cnt}</span></div>
+                                <div className="bar-track"><div className="bar-fill" style={{ width:`${Math.round((cnt/filtered.length)*100)}%`,background:"#F59E0B" }}></div></div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* RECORD TERBARU */}
+                      <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10 }}>
+                        <div style={{ fontSize:13,fontWeight:600,color:"#111" }}>Record Terbaru</div>
+                        <button className="btn-primary" style={{ width:"auto",padding:"8px 16px",margin:0 }} onClick={()=>navTo("entry")}>
+                          <i className="ti ti-plus" style={{ marginRight:4 }}></i>Entry baru
+                        </button>
+                      </div>
+                      {filtered.length===0&&<div className="card" style={{ textAlign:"center",color:"#999",fontSize:13,padding:24 }}>Belum ada record.</div>}
+                      {filtered.slice(0,5).map(r=>(
+                        <div key={r.id} className="record-card" onClick={()=>{setDetailId(r.id);setPage("detail");}}>
+                          <div className="record-card-header">
+                            <div><div className="record-size">{r.mold_size}</div><div className="record-type">{r.maker_container_l||r.maker_container_r||"-"}</div></div>
+                            <div style={{ fontSize:11,color:"#999",textAlign:"right" }}><div>{r.date}</div><div>{r.jam_mulai&&r.jam_selesai?`${r.jam_mulai}–${r.jam_selesai}`:""}</div></div>
+                          </div>
+                          {r.machine_code&&<div style={{ fontSize:12,fontWeight:600,color:"#1D9E75",marginBottom:6 }}><i className="ti ti-robot" style={{ fontSize:13,marginRight:4 }}></i>{r.machine_code}</div>}
+                          <DetailSummary rec={{...r,problemDetails:r.problem_details,problems:r.problems||[]}}/>
+                          <div className="record-meta"><i className="ti ti-user" style={{ fontSize:12,marginRight:4 }}></i>{r.technician}</div>
+                        </div>
+                      ))}
                     </div>
-                    {r.machine_code&&<div style={{ fontSize:12,fontWeight:600,color:"#1D9E75",marginBottom:6 }}><i className="ti ti-robot" style={{ fontSize:13,marginRight:4 }}></i>{r.machine_code}</div>}
-                    <DetailSummary rec={{...r,problemDetails:r.problem_details,problems:r.problems||[]}}/>
-                    <div className="record-meta"><i className="ti ti-user" style={{ fontSize:12,marginRight:4 }}></i>{r.technician}</div>
-                  </div>
-                ))}
+                  );
+                })()}
               </div>
             )}
 
