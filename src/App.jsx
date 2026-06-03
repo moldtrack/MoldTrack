@@ -1135,6 +1135,7 @@ export default function App() {
                           {label:"Action Problem", data:filtered},
                           {label:"Persiapan Mold", data:prepRecords},
                           {label:"QC Gate",        data:qcRecords},
+                          {label:"Naik Mold",      data:naikRecords},
                         ];
                         const grupTotals = grups.map(g=>({
                           name:`Grup ${g}`,
