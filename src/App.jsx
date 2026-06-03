@@ -769,6 +769,7 @@ export default function App() {
       machine_code:machineCode(form), plant:form.plant, line:form.line, machine:form.machine, press:form.press,
       problems:form.problems, problem_details:form.problemDetails, notes:form.notes,
       created_by: currentUser?.id,
+      grup: currentUser?.username?.startsWith("grup-") ? currentUser.username.replace("grup-","").toUpperCase() : null,
     };
     if(editId){
       const{error}=await supabase.from("repair_records").update(payload).eq("id",editId);
@@ -1079,6 +1080,37 @@ export default function App() {
                           })}
                         </div>
                       </div>
+
+                      {/* PERBANDINGAN GRUP */}
+                      {(()=>{
+                        const grups = ["A","B","C","D"];
+                        const grupCounts = grups.map(g=>({
+                          name:`Grup ${g}`,
+                          count:filtered.filter(r=>r.grup===g).length,
+                          color:["#1D9E75","#3B82F6","#F59E0B","#EF4444"][grups.indexOf(g)]
+                        }));
+                        const maxGrup = Math.max(...grupCounts.map(g=>g.count),1);
+                        return(
+                          <div className="card" style={{ marginBottom:16 }}>
+                            <div className="card-title">👥 Perbandingan Grup</div>
+                            {grupCounts.every(g=>g.count===0)&&<div style={{ fontSize:12,color:"#999" }}>Belum ada data per grup.</div>}
+                            <div style={{ display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:12 }}>
+                              {grupCounts.map(g=>(
+                                <div key={g.name} style={{ textAlign:"center",padding:"12px 8px",borderRadius:8,background:"#f8f8f8",border:`2px solid ${g.color}20` }}>
+                                  <div style={{ fontSize:22,fontWeight:700,color:g.color }}>{g.count}</div>
+                                  <div style={{ fontSize:12,color:"#666",marginTop:4 }}>{g.name}</div>
+                                </div>
+                              ))}
+                            </div>
+                            {grupCounts.map(g=>(
+                              <div key={g.name} className="bar-row">
+                                <div className="bar-row-header"><span>{g.name}</span><span style={{ fontWeight:600,color:"#111" }}>{g.count}</span></div>
+                                <div className="bar-track"><div className="bar-fill" style={{ width:`${Math.round((g.count/maxGrup)*100)}%`,background:g.color }}></div></div>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
 
                       {/* RECORD TERBARU */}
                       <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10 }}>
