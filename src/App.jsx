@@ -985,7 +985,7 @@ export default function App() {
               <div style={{ marginLeft:8 }}>
                 <div className="topbar-title">
                   {page==="dashboard"&&"Dashboard"}
-                  {page==="entry"&&(editId?"Edit Record":"Action Problem")}
+                  {page==="entry"&&canEntry(role)&&(editId?"Edit Record":"Action Problem")}
                   {page==="database"&&"Database Record"}
                   {page==="detail"&&"Detail Record"}
                   {page==="users"&&"Kelola User"}
@@ -998,7 +998,7 @@ export default function App() {
               </div>
             </div>
             <div style={{ display:"flex",alignItems:"center",gap:8 }}>
-              <button className="btn-sm" onClick={loadRecords} style={{ fontSize:11 }}>↻ Refresh</button>
+              <button className="btn-sm" onClick={()=>{loadRecords();loadPrepRecords();loadQcRecords();loadNaikRecords();loadRakitRecords();}} style={{ fontSize:11 }}>↻ Refresh</button>
               <button className="btn-sm" onClick={handleLogout} style={{ color:"#E24B4A",borderColor:"#E24B4A",fontSize:11 }}>Keluar</button>
             </div>
           </div>
@@ -1012,7 +1012,13 @@ export default function App() {
                 {(()=>{
                   const now = new Date();
                   const thisMonth = now.toISOString().slice(0,7);
-                  const filtered = filterMonth==="all" ? records : records.filter(r=>r.date?.startsWith(filterMonth));
+                  // Filter semua tabel berdasarkan filterMonth
+                  const applyFilter = (data) => filterMonth==="all" ? data : data.filter(r=>r.date?.startsWith(filterMonth));
+                  const filtered     = applyFilter(records);
+                  const filteredPrep = applyFilter(prepRecords);
+                  const filteredQc   = applyFilter(qcRecords);
+                  const filteredNaik = applyFilter(naikRecords);
+                  const filteredRakit = applyFilter(rakitRecords);
                   const todayStr = now.toISOString().slice(0,10);
                   const todayFiltered = filtered.filter(r=>r.date===todayStr);
 
@@ -1039,13 +1045,21 @@ export default function App() {
                   const plantD = filtered.filter(r=>r.plant==="D").length;
                   const plantK = filtered.filter(r=>r.plant==="K").length;
 
-                  // Tren 7 hari terakhir
+                  // Tren 7 hari terakhir — gabungkan semua proses
                   const last7 = Array.from({length:7},(_,i)=>{
                     const d = new Date(now); d.setDate(d.getDate()-i);
                     const ds = d.toISOString().slice(0,10);
-                    return {date:ds.slice(5), count:records.filter(r=>r.date===ds).length};
+                    return {
+                      date: ds.slice(5),
+                      action: records.filter(r=>r.date===ds).length,
+                      prep:   prepRecords.filter(r=>r.date===ds).length,
+                      qc:     qcRecords.filter(r=>r.date===ds).length,
+                      naik:   naikRecords.filter(r=>r.date===ds).length,
+                      rakit:  rakitRecords.filter(r=>r.date===ds).length,
+                      total:  records.filter(r=>r.date===ds).length + prepRecords.filter(r=>r.date===ds).length + qcRecords.filter(r=>r.date===ds).length + naikRecords.filter(r=>r.date===ds).length + rakitRecords.filter(r=>r.date===ds).length,
+                    };
                   }).reverse();
-                  const maxTren = Math.max(...last7.map(d=>d.count), 1);
+                  const maxTren = Math.max(...last7.map(d=>d.total), 1);
 
                   // Avg durasi
                   const durations = filtered.map(r=>{
@@ -1056,6 +1070,11 @@ export default function App() {
                     return d>0?d:null;
                   }).filter(Boolean);
                   const avgDur = durations.length ? Math.round(durations.reduce((a,b)=>a+b,0)/durations.length) : 0;
+
+                  // QC status summary
+                  const qcOk    = filteredQc.filter(r=>r.status==="ok").length;
+                  const qcMinor = filteredQc.filter(r=>r.status==="minor").length;
+                  const qcMajor = filteredQc.filter(r=>r.status==="major").length;
 
                   return (
                     <div>
@@ -1081,17 +1100,33 @@ export default function App() {
                       </div>
 
                       {/* STAT CARDS */}
-                      <div className="stat-grid" style={{ gridTemplateColumns:"repeat(4,1fr)",marginBottom:16 }}>
+                      <div className="stat-grid" style={{ gridTemplateColumns:"repeat(2,1fr)",marginBottom:16,gap:8 }}>
                         {[
-                          {label:"Total Perbaikan",val:filtered.length,sub:filterMonth==="all"?"semua waktu":filterMonth,icon:"ti-tools"},
-                          {label:"Hari ini",val:todayFiltered.length,sub:todayStr,icon:"ti-calendar-today"},
-                          {label:"Rata-rata durasi",val:avgDur?`${avgDur} mnt`:"-",sub:"per perbaikan",icon:"ti-clock"},
-                          {label:"Teknisi aktif",val:techCounts.length,sub:"orang",icon:"ti-users"},
+                          {label:"Action Problem",val:filtered.length,sub:filterMonth==="all"?"semua waktu":filterMonth,icon:"ti-tools",color:"#1D9E75"},
+                          {label:"Persiapan Mold",val:filteredPrep.length,sub:"keluar gudang",icon:"ti-package",color:"#3B82F6"},
+                          {label:"QC Gate",val:filteredQc.length,sub:`OK:${qcOk} Minor:${qcMinor} Major:${qcMajor}`,icon:"ti-clipboard-check",color:"#F59E0B"},
+                          {label:"Naik Mold",val:filteredNaik.length,sub:filterMonth==="all"?"semua waktu":filterMonth,icon:"ti-arrow-up",color:"#EF4444"},
+                          {label:"Rakit Mold",val:filteredRakit.length,sub:filterMonth==="all"?"semua waktu":filterMonth,icon:"ti-tools",color:"#8B5CF6"},
                         ].map((c,i)=>(
                           <div key={i} className="stat-card" style={{ textAlign:"center" }}>
-                            <i className={`ti ${c.icon}`} style={{ fontSize:22,color:"#1D9E75",marginBottom:6,display:"block" }}></i>
+                            <i className={`ti ${c.icon}`} style={{ fontSize:22,color:c.color,marginBottom:6,display:"block" }}></i>
                             <div className="stat-label">{c.label}</div>
-                            <div className="stat-val">{c.val}</div>
+                            <div className="stat-val" style={{ color:c.color }}>{c.val}</div>
+                            <div className="stat-sub">{c.sub}</div>
+                          </div>
+                        ))}
+                      </div>
+                      {/* STAT ROW 2 */}
+                      <div className="stat-grid" style={{ gridTemplateColumns:"repeat(3,1fr)",marginBottom:16 }}>
+                        {[
+                          {label:"Hari ini (Action)",val:todayFiltered.length,sub:todayStr,icon:"ti-calendar-today",color:"#1D9E75"},
+                          {label:"Rata-rata durasi",val:avgDur?`${avgDur} mnt`:"-",sub:"per perbaikan",icon:"ti-clock",color:"#6B7280"},
+                          {label:"Teknisi aktif",val:techCounts.length,sub:"orang",icon:"ti-users",color:"#6B7280"},
+                        ].map((c,i)=>(
+                          <div key={i} className="stat-card" style={{ textAlign:"center" }}>
+                            <i className={`ti ${c.icon}`} style={{ fontSize:20,color:c.color,marginBottom:4,display:"block" }}></i>
+                            <div className="stat-label">{c.label}</div>
+                            <div className="stat-val" style={{ fontSize:18 }}>{c.val}</div>
                             <div className="stat-sub">{c.sub}</div>
                           </div>
                         ))}
@@ -1099,13 +1134,25 @@ export default function App() {
 
                       {/* TREN 7 HARI */}
                       <div className="card" style={{ marginBottom:16 }}>
-                        <div className="card-title">📈 Tren Perbaikan 7 Hari Terakhir</div>
-                        <div style={{ display:"flex",alignItems:"flex-end",gap:8,height:80,marginTop:8 }}>
+                        <div className="card-title">📈 Aktivitas 7 Hari Terakhir (Semua Proses)</div>
+                        {/* Legend */}
+                        <div style={{ display:"flex",gap:12,marginBottom:10,flexWrap:"wrap" }}>
+                          {[["#1D9E75","Action Problem"],["#3B82F6","Persiapan"],["#F59E0B","QC Gate"],["#EF4444","Naik Mold"],["#8B5CF6","Rakit"]].map(([c,l])=>(
+                            <div key={l} style={{ display:"flex",alignItems:"center",gap:4,fontSize:10,color:"#666" }}>
+                              <div style={{ width:8,height:8,borderRadius:2,background:c }}></div>{l}
+                            </div>
+                          ))}
+                        </div>
+                        <div style={{ display:"flex",alignItems:"flex-end",gap:8,height:90,marginTop:8 }}>
                           {last7.map((d,i)=>(
                             <div key={i} style={{ flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4 }}>
-                              <div style={{ fontSize:11,fontWeight:600,color:"#1D9E75" }}>{d.count||""}</div>
-                              <div style={{ width:"100%",background:d.count?"#1D9E75":"#e0e0e0",borderRadius:"4px 4px 0 0",
-                                height:`${Math.round((d.count/maxTren)*60)+4}px`,minHeight:4,transition:"height 0.3s" }}></div>
+                              <div style={{ fontSize:11,fontWeight:600,color:"#555" }}>{d.total||""}</div>
+                              <div style={{ width:"100%",display:"flex",flexDirection:"column",gap:1 }}>
+                                {[["#8B5CF6",d.rakit],["#EF4444",d.naik],["#F59E0B",d.qc],["#3B82F6",d.prep],["#1D9E75",d.action]].map(([c,v],j)=>
+                                  v>0?<div key={j} style={{ width:"100%",background:c,height:`${Math.round((v/maxTren)*60)}px`,minHeight:2 }}></div>:null
+                                )}
+                                {d.total===0&&<div style={{ width:"100%",background:"#e0e0e0",height:4,borderRadius:"2px 2px 0 0" }}></div>}
+                              </div>
                               <div style={{ fontSize:10,color:"#999" }}>{d.date}</div>
                             </div>
                           ))}
@@ -1184,9 +1231,10 @@ export default function App() {
                         const colors = ["#1D9E75","#3B82F6","#F59E0B","#EF4444"];
                         const proses = [
                           {label:"Action Problem", data:filtered},
-                          {label:"Persiapan Mold", data:prepRecords},
-                          {label:"QC Gate",        data:qcRecords},
-                          {label:"Naik Mold",      data:naikRecords},
+                          {label:"Persiapan Mold", data:filteredPrep},
+                          {label:"QC Gate",        data:filteredQc},
+                          {label:"Naik Mold",      data:filteredNaik},
+                          {label:"Rakit Mold",     data:filteredRakit},
                         ];
                         const grupTotals = grups.map(g=>({
                           name:`Grup ${g}`,
@@ -1229,9 +1277,9 @@ export default function App() {
                       {/* RECORD TERBARU */}
                       <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10 }}>
                         <div style={{ fontSize:13,fontWeight:600,color:"#111" }}>Record Terbaru</div>
-                        <button className="btn-primary" style={{ width:"auto",padding:"8px 16px",margin:0 }} onClick={()=>navTo("entry")}>
+                        {canEntry(role)&&<button className="btn-primary" style={{ width:"auto",padding:"8px 16px",margin:0 }} onClick={()=>navTo("entry")}>
                           <i className="ti ti-plus" style={{ marginRight:4 }}></i>Entry baru
-                        </button>
+                        </button>}
                       </div>
                       {filtered.length===0&&<div className="card" style={{ textAlign:"center",color:"#999",fontSize:13,padding:24 }}>Belum ada record.</div>}
                       {filtered.slice(0,5).map(r=>(
