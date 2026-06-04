@@ -129,7 +129,7 @@ const exportToExcel = (records) => {
 
 // role permissions
 const canDashboard   = (r) => ["analyst","adh","dh","admin"].includes(r);
-const canDatabase    = (r) => ["analyst","adh","dh","admin","teknisi"].includes(r);
+const canDatabase    = (r) => ["analyst","adh","dh","admin","teknisi","qcgate","naik","rakit","persiapan"].includes(r);
 const canPersiapan   = (r) => ["persiapan","analyst","adh","dh","admin"].includes(r);
 const canQCGate      = (r) => ["qcgate","analyst","adh","dh","admin"].includes(r);
 const canRakit        = (r) => ["rakit","analyst","adh","dh","admin"].includes(r);
@@ -618,6 +618,7 @@ export default function App() {
   const [filterTech, setFilterTech]       = useState("");
   const [toast, setToast]     = useState(null);
   const [filterMonth, setFilterMonth]     = useState(new Date().toISOString().slice(0,7));
+  const [entryTab, setEntryTab]           = useState("form");
   const [naikTab, setNaikTab]             = useState("form");
 
   // persiapan state
@@ -647,15 +648,26 @@ export default function App() {
   const role = currentUser?.role || "";
   const showToast = (msg, type="success") => { setToast({msg,type}); setTimeout(()=>setToast(null),2800); };
 
-  // session persist
+  // session persist — localStorage agar tetap ada setelah refresh
   useEffect(() => {
-    const saved = sessionStorage.getItem("moldtrack_user");
-    if (saved) { setCurrentUser(JSON.parse(saved)); }
+    try {
+      const saved = localStorage.getItem("moldtrack_user");
+      if (saved) {
+        const user = JSON.parse(saved);
+        let startPage = "dashboard";
+        if (user.role === "teknisi")        startPage = "entry";
+        else if (user.role === "persiapan") startPage = "persiapan";
+        else if (user.role === "qcgate")    startPage = "qcgate";
+        else if (user.role === "naik")      startPage = "naik";
+        else if (user.role === "rakit")     startPage = "rakit";
+        setPage(startPage);
+        setCurrentUser(user);
+      }
+    } catch { localStorage.removeItem("moldtrack_user"); }
   }, []);
 
   const handleLogin = (user) => {
-    sessionStorage.setItem("moldtrack_user", JSON.stringify(user));
-    // Tentukan halaman awal berdasarkan role
+    localStorage.setItem("moldtrack_user", JSON.stringify(user));
     let startPage = "dashboard";
     if (user.role === "teknisi")        startPage = "entry";
     else if (user.role === "persiapan") startPage = "persiapan";
@@ -663,12 +675,12 @@ export default function App() {
     else if (user.role === "naik")      startPage = "naik";
     else if (user.role === "rakit")     startPage = "rakit";
     setPage(startPage);
-    setCurrentUser(user); // set TERAKHIR agar trigger load data setelah page sudah benar
+    setCurrentUser(user);
   };
 
   const handleLogout = () => {
     setCurrentUser(null);
-    sessionStorage.removeItem("moldtrack_user");
+    localStorage.removeItem("moldtrack_user");
     setPage("dashboard");
   };
 
@@ -750,6 +762,7 @@ export default function App() {
     if (error) { showToast("Gagal simpan: "+error.message,"error"); return; }
     showToast("Naik mold berhasil dicatat! ✅");
     setNaikForm(emptyNaikForm());
+    setNaikTab("database");
   };
 
   const submitRakit = async () => {
@@ -777,6 +790,7 @@ export default function App() {
     if (error) { showToast("Gagal simpan: "+error.message,"error"); return; }
     showToast("Rakit mold berhasil dicatat! ✅");
     setRakitForm(emptyRakitForm());
+    setRakitTab("database");
   };
 
   const submitPrepOut = async () => {
@@ -879,13 +893,13 @@ export default function App() {
       if(error){showToast("Gagal simpan: "+error.message,"error");return;}
       showToast("Record berhasil disimpan.");
     }
-    setForm(emptyForm());setEditId(null);setPage("database");
+    setForm(emptyForm());setEditId(null);setEntryTab("database");
   };
 
   const startEdit = (rec) => {
     const pressVal = Array.isArray(rec.press) ? rec.press : (rec.press ? [rec.press] : []);
     setForm({moldSize:rec.mold_size,makerContainerL:rec.maker_container_l||"",makerContainerR:rec.maker_container_r||"",typeContainerL:rec.type_container_l||"",typeContainerR:rec.type_container_r||"",containerNoL:rec.container_no_l||"",containerNoR:rec.container_no_r||"",moldNoL:rec.mold_no_l||"",moldNoR:rec.mold_no_r||"",date:rec.date,technician:rec.technician,plant:rec.plant||"",line:rec.line||"",machine:rec.machine||"",press:pressVal,problems:rec.problems||[],problemDetails:rec.problem_details||{},notes:rec.notes||""});
-    setEditId(rec.id);setPage("entry");
+    setEditId(rec.id);setPage("entry");setEntryTab("form");
   };
 
   const deleteRecord = async (id) => {
@@ -911,11 +925,6 @@ export default function App() {
   const detailRec=records.find(r=>r.id===detailId);
   const sameSize=detailRec?records.filter(r=>r.mold_size===detailRec.mold_size&&r.id!==detailRec.id).slice(0,5):[];
 
-  const navTo = (p) => {
-    setPage(p);
-    if(p==="entry"){setForm(emptyForm());setEditId(null);}
-  };
-
   // build nav items based on role
   const navItems = [
     ...(canDashboard(role)   ? [["dashboard","ti-layout-dashboard","Dashboard"]] : []),
@@ -927,6 +936,14 @@ export default function App() {
     ...(canNaik(role)        ? [["naik","ti-arrow-up","Naik Mold"]] : []),
     ...(canManageUsers(role) ? [["users","ti-users","Users"]] : []),
   ];
+  // Reset tab ke "form" saat user navigasi ke halaman baru
+  const navTo = (p) => {
+    setPage(p);
+    if(p==="entry"){ setForm(emptyForm()); setEditId(null); setEntryTab("form"); }
+    if(p==="qcgate") setQcMode("entry");
+    if(p==="rakit")  setRakitTab("form");
+    if(p==="naik")   setNaikTab("form");
+  };
 
   if (!currentUser) return (
     <>
@@ -1292,8 +1309,21 @@ export default function App() {
             )}
 
             {/* ENTRY FORM */}
-            {page==="entry"&&(
+            {page==="entry"&&canEntry(role)&&(
               <div>
+                {/* TAB NAVIGATION */}
+                <div style={{ display:"flex",gap:8,marginBottom:16 }}>
+                  {[["form","✏️ Input"],["database","📋 Database"]].map(([id,lbl])=>(
+                    <button key={id} onClick={()=>setEntryTab(id)}
+                      style={{ flex:1,padding:"10px",borderRadius:8,border:"1.5px solid",cursor:"pointer",fontSize:13,fontWeight:600,
+                        borderColor:entryTab===id?"#1D9E75":"#e0e0e0",
+                        background:entryTab===id?"#1D9E75":"#fff",
+                        color:entryTab===id?"#fff":"#666" }}>
+                      {lbl}
+                    </button>
+                  ))}
+                </div>
+                {entryTab==="form"&&<div>
                 <div className="card">
                   <div className="card-title">Identitas perbaikan</div>
                   <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:0 }}>
@@ -1452,12 +1482,49 @@ export default function App() {
 
                 <button className="btn-primary" onClick={submitForm}>{editId?"Update record":"Simpan record"}</button>
                 <button className="btn-secondary" onClick={()=>{setForm(emptyForm());setEditId(null);}}>Reset</button>
-                <button className="btn-secondary" onClick={()=>setPage(canDashboard(role)?"dashboard":"database")}>Batal</button>
+                </div>}
+                {entryTab==="database"&&<div>
+                <div className="search-wrap">
+                  <i className="ti ti-search search-icon"></i>
+                  <input className="search-input" placeholder="Cari size, teknisi, kode mesin..." value={search} onChange={e=>setSearch(e.target.value)}/>
+                </div>
+                <div className="filter-row">
+                  <select className="filter-select" value={filterProblem} onChange={e=>setFilterProblem(e.target.value)}>
+                    <option value="">Semua problem</option>
+                    {PROBLEMS.map(p=><option key={p.id} value={p.id}>{p.label}</option>)}
+                  </select>
+                  <select className="filter-select" value={filterTech} onChange={e=>setFilterTech(e.target.value)}>
+                    <option value="">Semua teknisi</option>
+                    {knownTechs.map(t=><option key={t}>{t}</option>)}
+                  </select>
+                  <button style={{ padding:"8px 14px",borderRadius:8,border:"1.5px solid #1D9E75",background:"#E1F5EE",color:"#085041",fontSize:12,fontWeight:600,cursor:"pointer",flexShrink:0,whiteSpace:"nowrap" }} onClick={()=>exportToExcel(records)}>
+                    ⬇ Excel
+                  </button>
+                </div>
+                <div style={{ fontSize:12,color:"#999",marginBottom:10 }}>{filtered.length} record ditemukan</div>
+                {filtered.length===0&&<div className="card" style={{ textAlign:"center",color:"#999",fontSize:13,padding:24 }}>Tidak ada record yang sesuai filter.</div>}
+                {filtered.map(r=>(
+                  <div key={r.id} className="record-card">
+                    <div className="record-card-header" onClick={()=>{setDetailId(r.id);setPage("detail");}}>
+                      <div><div className="record-size">{r.mold_size}</div><div className="record-type">{r.mold_type==="segmented"?"Segmented":"Two Piece"}</div></div>
+                      <div style={{ fontSize:11,color:"#999",textAlign:"right" }}><div>{r.date}</div></div>
+                    </div>
+                    {r.machine_code&&<div style={{ fontSize:12,fontWeight:600,color:"#1D9E75",marginBottom:6 }}><i className="ti ti-robot" style={{ fontSize:13,marginRight:4 }}></i>{r.machine_code}</div>}
+                    <div style={{ marginBottom:6 }}><DetailSummary rec={{...r,problemDetails:r.problem_details,problems:r.problems||[]}}/></div>
+                    <div className="record-meta" style={{ marginBottom:8 }}><i className="ti ti-user" style={{ fontSize:12,marginRight:4 }}></i>{r.technician}</div>
+                    <div className="record-actions">
+                      <button className="btn-sm" onClick={()=>{setDetailId(r.id);setPage("detail");}}>Detail</button>
+                      {canEditDelete(r)&&<button className="btn-sm" onClick={()=>startEdit(r)}>Edit</button>}
+                      {canEditDelete(r)&&<button className="btn-sm-danger" onClick={()=>deleteRecord(r.id)}>Hapus</button>}
+                    </div>
+                  </div>
+                ))}
+                </div>}
               </div>
             )}
 
-            {/* DATABASE */}
-            {page==="database"&&canDatabase(role)&&(
+            {/* DATABASE — hanya untuk analyst/adh/dh/admin yang akses langsung dari nav */}
+            {page==="database"&&canDatabase(role)&&!canEntry(role)&&(
               <div>
                 <div className="search-wrap">
                   <i className="ti ti-search search-icon"></i>
@@ -1472,9 +1539,7 @@ export default function App() {
                     <option value="">Semua teknisi</option>
                     {knownTechs.map(t=><option key={t}>{t}</option>)}
                   </select>
-                  <button className="btn-primary" style={{ width:"auto",padding:"8px 14px",margin:0,flexShrink:0 }} onClick={()=>navTo("entry")}>
-                    + Entry
-                  </button>
+                  {canEntry(role)&&<button className="btn-primary" style={{ width:"auto",padding:"8px 14px",margin:0,flexShrink:0 }} onClick={()=>navTo("entry")}>+ Entry</button>}
                   <button style={{ padding:"8px 14px",borderRadius:8,border:"1.5px solid #1D9E75",background:"#E1F5EE",color:"#085041",fontSize:12,fontWeight:600,cursor:"pointer",flexShrink:0,whiteSpace:"nowrap" }} onClick={()=>exportToExcel(records)}>
                     ⬇ Excel
                   </button>
@@ -1715,7 +1780,7 @@ export default function App() {
               <div>
                 {/* TABS */}
                 <div style={{ display:"flex",gap:8,marginBottom:16 }}>
-                  {[["entry","🔍 Entry QC"],["history","📋 History QC"]].map(([m,lbl])=>(
+                  {[["entry","✏️ Input QC"],["history","📋 Database"]].map(([m,lbl])=>(
                     <button key={m} onClick={()=>setQcMode(m)}
                       style={{ flex:1,padding:"10px 8px",borderRadius:10,border:"1.5px solid",borderColor:qcMode===m?"#1D9E75":"#e0e0e0",background:qcMode===m?"#E1F5EE":"#fff",color:qcMode===m?"#085041":"#666",fontSize:12,fontWeight:qcMode===m?600:400,cursor:"pointer" }}>
                       {lbl}
