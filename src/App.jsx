@@ -1236,14 +1236,56 @@ export default function App() {
                         { id:"qc2",       label:"QC Gate 2",  icon:"📐" },
                         { id:"naik",      label:"Naik Mold",  icon:"⬆️" },
                       ];
-                      const flow = plan.flow || {};
-                      // Hitung progress dari data records
-                      const hasPersiapan = prepRecords.some(r=>r.mold_size===plan.mold_size&&r.date===plan.date);
-                      const hasQC1       = qcRecords.some(r=>r.mold_size===plan.mold_size&&r.date===plan.date);
-                      const hasRakit     = rakitRecords.some(r=>r.mold_size===plan.mold_size&&r.date===plan.date);
-                      const hasNaik      = naikRecords.some(r=>r.mold_size_naik===plan.mold_size&&r.date===plan.date);
-                      const progress = { persiapan:hasPersiapan, qc1:hasQC1, rakit:hasRakit, qc2:hasRakit, naik:hasNaik };
-                      const doneCount = Object.values(progress).filter(Boolean).length;
+                      // Hitung status tiap tahap: "done" | "active" | "hold" | "pending"
+                      const hasPersiapan  = prepRecords.some(r=>r.mold_size===plan.mold_size&&r.date===plan.date);
+                      const qc1Rec        = qcRecords.find(r=>r.mold_size===plan.mold_size&&r.date===plan.date);
+                      const hasQC1        = !!qc1Rec;
+                      const qc1OK         = qc1Rec?.status==="ok";
+                      const qc1Hold       = qc1Rec?.status==="major";
+                      const rakitRec      = rakitRecords.find(r=>r.mold_size===plan.mold_size&&r.date===plan.date);
+                      const hasRakit      = !!rakitRec;
+                      const rakitOK       = rakitRec?.hasil_rakit==="ok";
+                      const rakitHold     = rakitRec?.hasil_rakit==="ditahan";
+                      const hasNaik       = naikRecords.some(r=>r.mold_size_naik===plan.mold_size&&r.date===plan.date);
+
+                      // Status per step: "done"=hijau, "active"=kuning, "hold"=merah, "pending"=abu
+                      const getStatus = (stepId) => {
+                        if (stepId==="persiapan") {
+                          if (hasPersiapan) return "done";
+                          if (!hasPersiapan) return "active"; // selalu aktif pertama
+                          return "pending";
+                        }
+                        if (stepId==="qc1") {
+                          if (qc1Hold) return "hold";
+                          if (qc1OK)   return "done";
+                          if (hasQC1)  return "active"; // minor — sedang diproses
+                          if (hasPersiapan) return "active";
+                          return "pending";
+                        }
+                        if (stepId==="rakit") {
+                          if (rakitHold) return "hold";
+                          if (rakitOK)   return "done";
+                          if (hasRakit)  return "active";
+                          if (qc1OK)     return "active";
+                          return "pending";
+                        }
+                        if (stepId==="qc2") {
+                          if (hasNaik)   return "done";
+                          if (rakitOK)   return "active";
+                          return "pending";
+                        }
+                        if (stepId==="naik") {
+                          if (hasNaik)   return "done";
+                          if (rakitOK)   return "active";
+                          return "pending";
+                        }
+                        return "pending";
+                      };
+                      const statusColor = { done:"#1D9E75", active:"#E8A020", hold:"#E24B4A", pending:"#e0e0e0" };
+                      const statusBorder= { done:"#1D9E75", active:"#E8A020", hold:"#E24B4A", pending:"#ccc" };
+                      const statusText  = { done:"DONE", active:"NOW", hold:"HOLD", pending:"" };
+                      const statusGlow  = { done:"none", active:"0 0 0 3px #FEF3C7", hold:"0 0 0 3px #FCEBEB", pending:"none" };
+                      const doneCount   = STEPS.filter(s=>getStatus(s.id)==="done").length;
 
                       return(
                         <div key={plan.id} className="card" style={{ marginBottom:12 }}>
@@ -1254,8 +1296,9 @@ export default function App() {
                               <div style={{ fontSize:11,color:"#999" }}>Shift {plan.shift} · {plan.date} · Grup {plan.grup?.toUpperCase()}</div>
                             </div>
                             <div style={{ textAlign:"right" }}>
-                              <div style={{ fontSize:11,fontWeight:600,color:doneCount===5?"#1D9E75":"#E8A020" }}>
-                                {doneCount===5?"✅ Selesai":`${doneCount}/5 tahap`}
+                              <div style={{ fontSize:11,fontWeight:600,
+                                color:STEPS.some(s=>getStatus(s.id)==="hold")?"#E24B4A":doneCount===5?"#1D9E75":"#E8A020" }}>
+                                {STEPS.some(s=>getStatus(s.id)==="hold")?"🚫 Ada HOLD":doneCount===5?"✅ Selesai":`⏳ ${doneCount}/5 tahap`}
                               </div>
                             </div>
                           </div>
@@ -1265,26 +1308,27 @@ export default function App() {
                             {/* Garis */}
                             <div style={{ position:"absolute",top:14,left:"10%",right:"10%",height:3,background:"#e0e0e0",borderRadius:2,zIndex:0 }}></div>
                             <div style={{ position:"absolute",top:14,left:"10%",height:3,background:"#1D9E75",borderRadius:2,zIndex:1,
-                              width:`${Math.max(0,(doneCount/5)*80)}%`,transition:"width 0.5s" }}></div>
+                              width:`${Math.max(0,(doneCount/5)*80)}%`,transition:"width 0.5s",background:STEPS.some(s=>getStatus(s.id)==="hold")?"#E24B4A":"#1D9E75" }}></div>
                             {/* Dots */}
                             <div style={{ display:"flex",justifyContent:"space-between",position:"relative",zIndex:2 }}>
-                              {STEPS.map((step,i)=>{
-                                const done = progress[step.id];
-                                const active = !done && (i===0 || progress[STEPS[i-1]?.id]);
+                              {STEPS.map((step)=>{
+                                const st = getStatus(step.id);
+                                const c  = statusColor[st];
                                 return(
                                   <div key={step.id} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:4,flex:1 }}>
                                     <div style={{ width:28,height:28,borderRadius:"50%",
-                                      background:done?"#1D9E75":active?"#E8A020":"#e0e0e0",
+                                      background:c,
                                       display:"flex",alignItems:"center",justifyContent:"center",
-                                      fontSize:14,border:`2px solid ${done?"#1D9E75":active?"#E8A020":"#ccc"}`,
-                                      boxShadow:active?"0 0 0 3px #FEF3C7":"none" }}>
-                                      {done?"✓":step.icon}
+                                      fontSize:st==="done"?14:13,
+                                      border:`2px solid ${statusBorder[st]}`,
+                                      boxShadow:statusGlow[st] }}>
+                                      {st==="done"?"✓":st==="hold"?"!":step.icon}
                                     </div>
-                                    <div style={{ fontSize:9,color:done?"#1D9E75":active?"#E8A020":"#999",fontWeight:done||active?600:400,textAlign:"center",lineHeight:1.2 }}>
+                                    <div style={{ fontSize:9,color:c,fontWeight:st!=="pending"?600:400,textAlign:"center",lineHeight:1.2 }}>
                                       {step.label}
                                     </div>
-                                    <div style={{ fontSize:9,color:done?"#1D9E75":"#ccc",fontWeight:600 }}>
-                                      {done?"DONE":active?"NOW":""}
+                                    <div style={{ fontSize:9,color:c,fontWeight:700 }}>
+                                      {statusText[st]}
                                     </div>
                                   </div>
                                 );
@@ -1779,14 +1823,56 @@ Lulus QC Gate 2. Siap naik ke mesin.")}`} target="_blank" rel="noopener noreferr
                         { id:"qc2",       label:"QC Gate 2",  icon:"📐" },
                         { id:"naik",      label:"Naik Mold",  icon:"⬆️" },
                       ];
-                      const flow = plan.flow || {};
-                      // Hitung progress dari data records
-                      const hasPersiapan = prepRecords.some(r=>r.mold_size===plan.mold_size&&r.date===plan.date);
-                      const hasQC1       = qcRecords.some(r=>r.mold_size===plan.mold_size&&r.date===plan.date);
-                      const hasRakit     = rakitRecords.some(r=>r.mold_size===plan.mold_size&&r.date===plan.date);
-                      const hasNaik      = naikRecords.some(r=>r.mold_size_naik===plan.mold_size&&r.date===plan.date);
-                      const progress = { persiapan:hasPersiapan, qc1:hasQC1, rakit:hasRakit, qc2:hasRakit, naik:hasNaik };
-                      const doneCount = Object.values(progress).filter(Boolean).length;
+                      // Hitung status tiap tahap: "done" | "active" | "hold" | "pending"
+                      const hasPersiapan  = prepRecords.some(r=>r.mold_size===plan.mold_size&&r.date===plan.date);
+                      const qc1Rec        = qcRecords.find(r=>r.mold_size===plan.mold_size&&r.date===plan.date);
+                      const hasQC1        = !!qc1Rec;
+                      const qc1OK         = qc1Rec?.status==="ok";
+                      const qc1Hold       = qc1Rec?.status==="major";
+                      const rakitRec      = rakitRecords.find(r=>r.mold_size===plan.mold_size&&r.date===plan.date);
+                      const hasRakit      = !!rakitRec;
+                      const rakitOK       = rakitRec?.hasil_rakit==="ok";
+                      const rakitHold     = rakitRec?.hasil_rakit==="ditahan";
+                      const hasNaik       = naikRecords.some(r=>r.mold_size_naik===plan.mold_size&&r.date===plan.date);
+
+                      // Status per step: "done"=hijau, "active"=kuning, "hold"=merah, "pending"=abu
+                      const getStatus = (stepId) => {
+                        if (stepId==="persiapan") {
+                          if (hasPersiapan) return "done";
+                          if (!hasPersiapan) return "active"; // selalu aktif pertama
+                          return "pending";
+                        }
+                        if (stepId==="qc1") {
+                          if (qc1Hold) return "hold";
+                          if (qc1OK)   return "done";
+                          if (hasQC1)  return "active"; // minor — sedang diproses
+                          if (hasPersiapan) return "active";
+                          return "pending";
+                        }
+                        if (stepId==="rakit") {
+                          if (rakitHold) return "hold";
+                          if (rakitOK)   return "done";
+                          if (hasRakit)  return "active";
+                          if (qc1OK)     return "active";
+                          return "pending";
+                        }
+                        if (stepId==="qc2") {
+                          if (hasNaik)   return "done";
+                          if (rakitOK)   return "active";
+                          return "pending";
+                        }
+                        if (stepId==="naik") {
+                          if (hasNaik)   return "done";
+                          if (rakitOK)   return "active";
+                          return "pending";
+                        }
+                        return "pending";
+                      };
+                      const statusColor = { done:"#1D9E75", active:"#E8A020", hold:"#E24B4A", pending:"#e0e0e0" };
+                      const statusBorder= { done:"#1D9E75", active:"#E8A020", hold:"#E24B4A", pending:"#ccc" };
+                      const statusText  = { done:"DONE", active:"NOW", hold:"HOLD", pending:"" };
+                      const statusGlow  = { done:"none", active:"0 0 0 3px #FEF3C7", hold:"0 0 0 3px #FCEBEB", pending:"none" };
+                      const doneCount   = STEPS.filter(s=>getStatus(s.id)==="done").length;
 
                       return(
                         <div key={plan.id} className="card" style={{ marginBottom:12 }}>
@@ -1797,8 +1883,9 @@ Lulus QC Gate 2. Siap naik ke mesin.")}`} target="_blank" rel="noopener noreferr
                               <div style={{ fontSize:11,color:"#999" }}>Shift {plan.shift} · {plan.date} · Grup {plan.grup?.toUpperCase()}</div>
                             </div>
                             <div style={{ textAlign:"right" }}>
-                              <div style={{ fontSize:11,fontWeight:600,color:doneCount===5?"#1D9E75":"#E8A020" }}>
-                                {doneCount===5?"✅ Selesai":`${doneCount}/5 tahap`}
+                              <div style={{ fontSize:11,fontWeight:600,
+                                color:STEPS.some(s=>getStatus(s.id)==="hold")?"#E24B4A":doneCount===5?"#1D9E75":"#E8A020" }}>
+                                {STEPS.some(s=>getStatus(s.id)==="hold")?"🚫 Ada HOLD":doneCount===5?"✅ Selesai":`⏳ ${doneCount}/5 tahap`}
                               </div>
                             </div>
                           </div>
@@ -1808,26 +1895,27 @@ Lulus QC Gate 2. Siap naik ke mesin.")}`} target="_blank" rel="noopener noreferr
                             {/* Garis */}
                             <div style={{ position:"absolute",top:14,left:"10%",right:"10%",height:3,background:"#e0e0e0",borderRadius:2,zIndex:0 }}></div>
                             <div style={{ position:"absolute",top:14,left:"10%",height:3,background:"#1D9E75",borderRadius:2,zIndex:1,
-                              width:`${Math.max(0,(doneCount/5)*80)}%`,transition:"width 0.5s" }}></div>
+                              width:`${Math.max(0,(doneCount/5)*80)}%`,transition:"width 0.5s",background:STEPS.some(s=>getStatus(s.id)==="hold")?"#E24B4A":"#1D9E75" }}></div>
                             {/* Dots */}
                             <div style={{ display:"flex",justifyContent:"space-between",position:"relative",zIndex:2 }}>
-                              {STEPS.map((step,i)=>{
-                                const done = progress[step.id];
-                                const active = !done && (i===0 || progress[STEPS[i-1]?.id]);
+                              {STEPS.map((step)=>{
+                                const st = getStatus(step.id);
+                                const c  = statusColor[st];
                                 return(
                                   <div key={step.id} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:4,flex:1 }}>
                                     <div style={{ width:28,height:28,borderRadius:"50%",
-                                      background:done?"#1D9E75":active?"#E8A020":"#e0e0e0",
+                                      background:c,
                                       display:"flex",alignItems:"center",justifyContent:"center",
-                                      fontSize:14,border:`2px solid ${done?"#1D9E75":active?"#E8A020":"#ccc"}`,
-                                      boxShadow:active?"0 0 0 3px #FEF3C7":"none" }}>
-                                      {done?"✓":step.icon}
+                                      fontSize:st==="done"?14:13,
+                                      border:`2px solid ${statusBorder[st]}`,
+                                      boxShadow:statusGlow[st] }}>
+                                      {st==="done"?"✓":st==="hold"?"!":step.icon}
                                     </div>
-                                    <div style={{ fontSize:9,color:done?"#1D9E75":active?"#E8A020":"#999",fontWeight:done||active?600:400,textAlign:"center",lineHeight:1.2 }}>
+                                    <div style={{ fontSize:9,color:c,fontWeight:st!=="pending"?600:400,textAlign:"center",lineHeight:1.2 }}>
                                       {step.label}
                                     </div>
-                                    <div style={{ fontSize:9,color:done?"#1D9E75":"#ccc",fontWeight:600 }}>
-                                      {done?"DONE":active?"NOW":""}
+                                    <div style={{ fontSize:9,color:c,fontWeight:700 }}>
+                                      {statusText[st]}
                                     </div>
                                   </div>
                                 );
@@ -2374,6 +2462,30 @@ Lulus QC Gate 2. Siap naik ke mesin.")}`} target="_blank" rel="noopener noreferr
             {/* PERSIAPAN */}
             {page==="persiapan"&&canPersiapan(role)&&(
               <div>
+                {/* ANTRIAN SHIFT PLAN */}
+                {(()=>{
+                  const myGrup = getGrup(currentUser?.username);
+                  const today = new Date().toISOString().slice(0,10);
+                  const antrian = shiftPlanRecords.filter(p=>p.grup===myGrup&&p.date===today&&(!prepRecords.some(r=>r.mold_size===p.mold_size&&r.date===today)));
+                  if (!antrian.length) return null;
+                  return(
+                    <div style={{ background:"#E1F5EE",borderRadius:10,padding:"10px 14px",marginBottom:14,border:"1.5px solid #1D9E75" }}>
+                      <div style={{ fontSize:12,fontWeight:700,color:"#085041",marginBottom:8 }}>
+                        📦 Antrian Shift Plan hari ini ({antrian.length} size)
+                      </div>
+                      <div style={{ display:"flex",flexWrap:"wrap",gap:6 }}>
+                        {antrian.map(p=>(
+                          <span key={p.id}
+                            style={{ background:"#fff",border:"1.5px solid #1D9E75",borderRadius:20,padding:"4px 12px",fontSize:12,fontWeight:700,color:"#085041",cursor:"pointer" }}
+                            onClick={()=>{ setPrepForm(f=>({...f,moldSize:p.mold_size})) }}>
+                            {p.mold_size}
+                          </span>
+                        ))}
+                      </div>
+                      <div style={{ fontSize:10,color:"#666",marginTop:6 }}>💡 Klik size untuk auto-isi form</div>
+                    </div>
+                  );
+                })()}
                 {/* TAB: Keluar / Kembali / History */}
                 <div style={{ display:"flex",gap:8,marginBottom:16 }}>
                   {[["out","📤 Catat Keluar"],["in","📥 Catat Kembali"],["history","📋 History"]].map(([m,lbl])=>(
@@ -2508,6 +2620,31 @@ Lulus QC Gate 2. Siap naik ke mesin.")}`} target="_blank" rel="noopener noreferr
             {/* QC GATE */}
             {page==="qcgate"&&canQCGate(role)&&(
               <div>
+                {/* ANTRIAN SHIFT PLAN */}
+                {(()=>{
+                  const myGrup = getGrup(currentUser?.username);
+                  const today = new Date().toISOString().slice(0,10);
+                  const antrian = shiftPlanRecords.filter(p=>p.grup===myGrup&&p.date===today&&(prepRecords.some(r=>r.mold_size===p.mold_size&&r.date===today)&&!qcRecords.some(r=>r.mold_size===p.mold_size&&r.date===today)));
+                  if (!antrian.length) return null;
+                  return(
+                    <div style={{ background:"#FEF9E7",borderRadius:10,padding:"10px 14px",marginBottom:14,border:"1.5px solid #1D9E75" }}>
+                      <div style={{ fontSize:12,fontWeight:700,color:"#085041",marginBottom:8 }}>
+                        🔍 Antrian Shift Plan hari ini ({antrian.length} size)
+                      </div>
+                      <div style={{ display:"flex",flexWrap:"wrap",gap:6 }}>
+                        {antrian.map(p=>(
+                          <span key={p.id}
+                            style={{ background:"#fff",border:"1.5px solid #1D9E75",borderRadius:20,padding:"4px 12px",fontSize:12,fontWeight:700,color:"#085041",cursor:"pointer" }}
+                            onClick={()=>{ setQcForm(f=>({...f,moldSize:p.mold_size}));setQcMode('entry') }}>
+                            {p.mold_size}
+                          </span>
+                        ))}
+                      </div>
+                      <div style={{ fontSize:10,color:"#666",marginTop:6 }}>💡 Klik size untuk auto-isi form</div>
+                    </div>
+                  );
+                })()}
+
                 {/* TABS */}
                 <div style={{ display:"flex",gap:8,marginBottom:16 }}>
                   {[["entry","✏️ Input QC"],["history","📋 Database"]].map(([m,lbl])=>(
@@ -2659,6 +2796,31 @@ Lulus QC Gate 2. Siap naik ke mesin.")}`} target="_blank" rel="noopener noreferr
             {/* RAKIT MOLD */}
             {page==="rakit"&&canRakit(role)&&(
               <div>
+                {/* ANTRIAN SHIFT PLAN */}
+                {(()=>{
+                  const myGrup = getGrup(currentUser?.username);
+                  const today = new Date().toISOString().slice(0,10);
+                  const antrian = shiftPlanRecords.filter(p=>p.grup===myGrup&&p.date===today&&(qcRecords.some(r=>r.mold_size===p.mold_size&&r.date===today&&r.status==="ok")&&!rakitRecords.some(r=>r.mold_size===p.mold_size&&r.date===today)));
+                  if (!antrian.length) return null;
+                  return(
+                    <div style={{ background:"#EDE9FE",borderRadius:10,padding:"10px 14px",marginBottom:14,border:"1.5px solid #1D9E75" }}>
+                      <div style={{ fontSize:12,fontWeight:700,color:"#085041",marginBottom:8 }}>
+                        🔨 Antrian Shift Plan hari ini ({antrian.length} size)
+                      </div>
+                      <div style={{ display:"flex",flexWrap:"wrap",gap:6 }}>
+                        {antrian.map(p=>(
+                          <span key={p.id}
+                            style={{ background:"#fff",border:"1.5px solid #1D9E75",borderRadius:20,padding:"4px 12px",fontSize:12,fontWeight:700,color:"#085041",cursor:"pointer" }}
+                            onClick={()=>{ setRakitForm(f=>({...f,moldSize:p.mold_size}));setRakitTab('form') }}>
+                            {p.mold_size}
+                          </span>
+                        ))}
+                      </div>
+                      <div style={{ fontSize:10,color:"#666",marginTop:6 }}>💡 Klik size untuk auto-isi form</div>
+                    </div>
+                  );
+                })()}
+
                 {/* TAB NAVIGATION */}
                 <div style={{ display:"flex",gap:8,marginBottom:16 }}>
                   {[["form","🔧 Input"],["database","📋 Database"]].map(([id,lbl])=>(
@@ -2857,6 +3019,31 @@ Lulus QC Gate 2. Siap naik ke mesin.")}`} target="_blank" rel="noopener noreferr
             {/* NAIK MOLD */}
             {page==="naik"&&canNaik(role)&&(
               <div>
+                {/* ANTRIAN SHIFT PLAN */}
+                {(()=>{
+                  const myGrup = getGrup(currentUser?.username);
+                  const today = new Date().toISOString().slice(0,10);
+                  const antrian = shiftPlanRecords.filter(p=>p.grup===myGrup&&p.date===today&&(rakitRecords.some(r=>r.mold_size===p.mold_size&&r.date===today)&&!naikRecords.some(r=>r.mold_size_naik===p.mold_size&&r.date===today)));
+                  if (!antrian.length) return null;
+                  return(
+                    <div style={{ background:"#FCEBEB",borderRadius:10,padding:"10px 14px",marginBottom:14,border:"1.5px solid #1D9E75" }}>
+                      <div style={{ fontSize:12,fontWeight:700,color:"#085041",marginBottom:8 }}>
+                        ⬆️ Antrian Shift Plan hari ini ({antrian.length} size)
+                      </div>
+                      <div style={{ display:"flex",flexWrap:"wrap",gap:6 }}>
+                        {antrian.map(p=>(
+                          <span key={p.id}
+                            style={{ background:"#fff",border:"1.5px solid #1D9E75",borderRadius:20,padding:"4px 12px",fontSize:12,fontWeight:700,color:"#085041",cursor:"pointer" }}
+                            onClick={()=>{ setNaikForm(f=>({...f,moldSizeNaik:p.mold_size}));setNaikTab('form') }}>
+                            {p.mold_size}
+                          </span>
+                        ))}
+                      </div>
+                      <div style={{ fontSize:10,color:"#666",marginTop:6 }}>💡 Klik size untuk auto-isi form</div>
+                    </div>
+                  );
+                })()}
+
                 {/* TAB NAVIGATION */}
                 <div style={{ display:"flex",gap:8,marginBottom:16 }}>
                   {[["form","⬆️ Input"],["database","📋 Database"]].map(([id,lbl])=>(
