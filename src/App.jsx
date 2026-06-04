@@ -84,9 +84,6 @@ const exportToExcel = (records) => {
     "Jenis Problem":    (r.problems||[]).map(getProblemLabel).join(" | "),
     "Detail Tindakan":  getTindakan(r.problems, r.problem_details),
     "Teknisi":          r.technician || "",
-    "Jam Mulai":        r.jam_mulai || "",
-    "Jam Selesai":      r.jam_selesai || "",
-    "Durasi (menit)":   calcDuration(r.jam_mulai, r.jam_selesai),
     "Catatan":          r.notes || "",
   }));
 
@@ -159,7 +156,7 @@ const emptyForm = () => ({
   makerContainerL:"", makerContainerR:"", typeContainerL:"", typeContainerR:"",
   containerNoL:"", containerNoR:"", moldNoL:"", moldNoR:"",
   date:new Date().toISOString().slice(0,10),
-  jamMulai:"", jamSelesai:"",
+  
   technician:"",
   plant:"", line:"", machine:"", press:[],
   problems:[], problemDetails:{}, notes:"",
@@ -633,16 +630,16 @@ export default function App() {
   const [qcRecords, setQcRecords]   = useState([]);
   const [qcMode, setQcMode]         = useState("entry");
   const [qcSearch, setQcSearch]     = useState("");
-  const emptyQcForm = () => ({ moldSize:"", moldSerial:"", cavityCondition:"", defects:[], status:"ok", repairNotes:"", checker:"", jamMulai:"", jamSelesai:"", date:new Date().toISOString().slice(0,10) });
+  const emptyQcForm = () => ({ moldSize:"", moldSerial:"", cavityCondition:"", defects:[], status:"ok", repairNotes:"", checker:"",  date:new Date().toISOString().slice(0,10) });
   const [qcForm, setQcForm]         = useState(emptyQcForm());
 
-  const emptyNaikForm = () => ({ moldSizeNaik:"", moldSizeTurun:"", plant:"", line:"", machine:"", containerNoL:"", containerNoR:"", moldNoL:"", moldNoR:"", turunContainerNoL:"", turunContainerNoR:"", turunMoldNoL:"", turunMoldNoR:"", jamMulai:"", jamSelesai:"", operator:"", notes:"", date:new Date().toISOString().slice(0,10) });
+  const emptyNaikForm = () => ({ moldSizeNaik:"", moldSizeTurun:"", plant:"", line:"", machine:"", containerNoL:"", containerNoR:"", moldNoL:"", moldNoR:"", turunContainerNoL:"", turunContainerNoR:"", turunMoldNoL:"", turunMoldNoR:"",  operator:"", notes:"", date:new Date().toISOString().slice(0,10) });
   const [naikForm, setNaikForm]     = useState(emptyNaikForm());
   const [naikRecords, setNaikRecords] = useState([]);
 
   // rakit state
   const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Bawah","Container L","Container R","Spacer Ring","Segmen"];
-  const emptyRakitForm = () => ({ moldSize:"", moldSerial:"", plant:"", line:"", machine:"", partsChecked:[], kondisiCavity:"", kondisiContainer:"", hasilRakit:"ok", catatan:"", operator:"", jamMulai:"", jamSelesai:"", date:new Date().toISOString().slice(0,10) });
+  const emptyRakitForm = () => ({ moldSize:"", moldSerial:"", plant:"", line:"", machine:"", partsChecked:[], kondisiCavity:"", kondisiContainer:"", hasilRakit:"ok", catatan:"", operator:"",  date:new Date().toISOString().slice(0,10) });
   const [rakitTab, setRakitTab]       = useState("form");
   const [rakitForm, setRakitForm]     = useState(emptyRakitForm());
   const [rakitRecords, setRakitRecords] = useState([]);
@@ -734,8 +731,6 @@ export default function App() {
       container_no_r:   naikForm.containerNoR.trim().toUpperCase()||null,
       mold_no_l:        naikForm.moldNoL.trim().toUpperCase()||null,
       mold_no_r:        naikForm.moldNoR.trim().toUpperCase()||null,
-      jam_mulai:        naikForm.jamMulai||null,
-      jam_selesai:      naikForm.jamSelesai||null,
       operator:         naikForm.operator.trim(),
       date:             naikForm.date,
       notes:            naikForm.notes||null,
@@ -765,8 +760,6 @@ export default function App() {
       hasil_rakit:      rakitForm.hasilRakit,
       catatan:          rakitForm.catatan.trim()||null,
       operator:         rakitForm.operator.trim(),
-      jam_mulai:        rakitForm.jamMulai||null,
-      jam_selesai:      rakitForm.jamSelesai||null,
       date:             rakitForm.date,
       created_by:       currentUser?.id,
       grup:             getGrup(currentUser?.username),
@@ -817,8 +810,6 @@ export default function App() {
       status:           qcForm.status,
       repair_notes:     qcForm.repairNotes,
       checker:          qcForm.checker.trim(),
-      jam_mulai:        qcForm.jamMulai,
-      jam_selesai:      qcForm.jamSelesai,
       date:             qcForm.date,
       created_by:       currentUser?.id,
       grup: getGrup(currentUser?.username),
@@ -863,7 +854,7 @@ export default function App() {
       container_no_r:form.containerNoR.trim().toUpperCase(),
       mold_no_l:form.moldNoL.trim().toUpperCase(),
       mold_no_r:form.moldNoR.trim().toUpperCase(),
-      date:form.date, jam_mulai:form.jamMulai, jam_selesai:form.jamSelesai,
+      date:form.date,
       technician:form.technician.trim(),
       machine_code:machineCode(form), plant:form.plant, line:form.line, machine:form.machine, press:form.press,
       problems:form.problems, problem_details:form.problemDetails, notes:form.notes,
@@ -884,7 +875,7 @@ export default function App() {
 
   const startEdit = (rec) => {
     const pressVal = Array.isArray(rec.press) ? rec.press : (rec.press ? [rec.press] : []);
-    setForm({moldSize:rec.mold_size,makerContainerL:rec.maker_container_l||"",makerContainerR:rec.maker_container_r||"",typeContainerL:rec.type_container_l||"",typeContainerR:rec.type_container_r||"",containerNoL:rec.container_no_l||"",containerNoR:rec.container_no_r||"",moldNoL:rec.mold_no_l||"",moldNoR:rec.mold_no_r||"",date:rec.date,jamMulai:rec.jam_mulai||"",jamSelesai:rec.jam_selesai||"",technician:rec.technician,plant:rec.plant||"",line:rec.line||"",machine:rec.machine||"",press:pressVal,problems:rec.problems||[],problemDetails:rec.problem_details||{},notes:rec.notes||""});
+    setForm({moldSize:rec.mold_size,makerContainerL:rec.maker_container_l||"",makerContainerR:rec.maker_container_r||"",typeContainerL:rec.type_container_l||"",typeContainerR:rec.type_container_r||"",containerNoL:rec.container_no_l||"",containerNoR:rec.container_no_r||"",moldNoL:rec.mold_no_l||"",moldNoR:rec.mold_no_r||"",date:rec.date,technician:rec.technician,plant:rec.plant||"",line:rec.line||"",machine:rec.machine||"",press:pressVal,problems:rec.problems||[],problemDetails:rec.problem_details||{},notes:rec.notes||""});
     setEditId(rec.id);setPage("entry");
   };
 
@@ -1061,15 +1052,7 @@ export default function App() {
                   }).reverse();
                   const maxTren = Math.max(...last7.map(d=>d.total), 1);
 
-                  // Avg durasi
-                  const durations = filtered.map(r=>{
-                    if(!r.jam_mulai||!r.jam_selesai) return null;
-                    const [h1,m1]=r.jam_mulai.split(":").map(Number);
-                    const [h2,m2]=r.jam_selesai.split(":").map(Number);
-                    const d=(h2*60+m2)-(h1*60+m1);
-                    return d>0?d:null;
-                  }).filter(Boolean);
-                  const avgDur = durations.length ? Math.round(durations.reduce((a,b)=>a+b,0)/durations.length) : 0;
+
 
                   // QC status summary
                   const qcOk    = filteredQc.filter(r=>r.status==="ok").length;
@@ -1120,7 +1103,7 @@ export default function App() {
                       <div className="stat-grid" style={{ gridTemplateColumns:"repeat(3,1fr)",marginBottom:16 }}>
                         {[
                           {label:"Hari ini (Action)",val:todayFiltered.length,sub:todayStr,icon:"ti-calendar-today",color:"#1D9E75"},
-                          {label:"Rata-rata durasi",val:avgDur?`${avgDur} mnt`:"-",sub:"per perbaikan",icon:"ti-clock",color:"#6B7280"},
+
                           {label:"Teknisi aktif",val:techCounts.length,sub:"orang",icon:"ti-users",color:"#6B7280"},
                         ].map((c,i)=>(
                           <div key={i} className="stat-card" style={{ textAlign:"center" }}>
@@ -1286,7 +1269,7 @@ export default function App() {
                         <div key={r.id} className="record-card" onClick={()=>{setDetailId(r.id);setPage("detail");}}>
                           <div className="record-card-header">
                             <div><div className="record-size">{r.mold_size}</div><div className="record-type">{r.maker_container_l||r.maker_container_r||"-"}</div></div>
-                            <div style={{ fontSize:11,color:"#999",textAlign:"right" }}><div>{r.date}</div><div>{r.jam_mulai&&r.jam_selesai?`${r.jam_mulai}–${r.jam_selesai}`:""}</div></div>
+                            <div style={{ fontSize:11,color:"#999",textAlign:"right" }}><div>{r.date}</div></div>
                           </div>
                           {r.machine_code&&<div style={{ fontSize:12,fontWeight:600,color:"#1D9E75",marginBottom:6 }}><i className="ti ti-robot" style={{ fontSize:13,marginRight:4 }}></i>{r.machine_code}</div>}
                           <DetailSummary rec={{...r,problemDetails:r.problem_details,problems:r.problems||[]}}/>
@@ -1364,20 +1347,7 @@ export default function App() {
                       <input className="form-input" placeholder="cth: MR-001" value={form.moldNoR} onChange={e=>setForm(f=>({...f,moldNoR:e.target.value}))} />
                     </div>
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Jam pengerjaan</label>
-                    <div style={{ display:"flex",alignItems:"center",gap:8 }}>
-                      <input type="time" className="form-input" style={{ flex:1 }} value={form.jamMulai} onChange={e=>setForm(f=>({...f,jamMulai:e.target.value}))}/>
-                      <span style={{ fontSize:12,color:"#999",flexShrink:0 }}>–</span>
-                      <input type="time" className="form-input" style={{ flex:1 }} value={form.jamSelesai} onChange={e=>setForm(f=>({...f,jamSelesai:e.target.value}))}/>
-                    </div>
-                    {form.jamMulai&&form.jamSelesai&&(()=>{
-                      const[h1,m1]=form.jamMulai.split(":").map(Number);
-                      const[h2,m2]=form.jamSelesai.split(":").map(Number);
-                      const diff=(h2*60+m2)-(h1*60+m1);
-                      if(diff>0) return <div style={{ fontSize:11,color:"#1D9E75",marginTop:4,fontWeight:500 }}>{Math.floor(diff/60)>0?`${Math.floor(diff/60)} jam `:""}{diff%60>0?`${diff%60} menit`:""}</div>;
-                    })()}
-                  </div>
+
                 </div>
 
                 <div className="card">
@@ -1506,7 +1476,7 @@ export default function App() {
                   <div key={r.id} className="record-card">
                     <div className="record-card-header" onClick={()=>{setDetailId(r.id);setPage("detail");}}>
                       <div><div className="record-size">{r.mold_size}</div><div className="record-type">{r.mold_type==="segmented"?"Segmented":"Two Piece"}</div></div>
-                      <div style={{ fontSize:11,color:"#999",textAlign:"right" }}><div>{r.date}</div><div>{r.jam_mulai&&r.jam_selesai?`${r.jam_mulai}–${r.jam_selesai}`:""}</div></div>
+                      <div style={{ fontSize:11,color:"#999",textAlign:"right" }}><div>{r.date}</div></div>
                     </div>
                     {r.machine_code&&<div style={{ fontSize:12,fontWeight:600,color:"#1D9E75",marginBottom:6 }}><i className="ti ti-robot" style={{ fontSize:13,marginRight:4 }}></i>{r.machine_code}</div>}
                     <div style={{ marginBottom:6 }}><DetailSummary rec={{...r,problemDetails:r.problem_details,problems:r.problems||[]}}/></div>
@@ -1535,8 +1505,7 @@ export default function App() {
                   <div className="stat-grid" style={{ marginBottom:12 }}>
                     <div className="stat-card"><div className="stat-label">Teknisi</div><div style={{ fontSize:13,fontWeight:600,color:"#111" }}>{detailRec.technician}</div></div>
                     <div className="stat-card"><div className="stat-label">Tanggal</div><div style={{ fontSize:13,fontWeight:600,color:"#111" }}>{detailRec.date}</div></div>
-                    <div className="stat-card"><div className="stat-label">Jam mulai</div><div style={{ fontSize:13,fontWeight:600,color:"#111" }}>{detailRec.jam_mulai||"-"}</div></div>
-                    <div className="stat-card"><div className="stat-label">Jam selesai</div><div style={{ fontSize:13,fontWeight:600,color:"#111" }}>{detailRec.jam_selesai||"-"}</div></div>
+
                   </div>
                   {detailRec.machine_code&&(
                     <div style={{ background:"#E1F5EE",borderRadius:8,padding:"10px 14px",marginBottom:12,display:"flex",alignItems:"center",gap:10 }}>
@@ -1589,7 +1558,7 @@ export default function App() {
                     <div className="card-title"><i className="ti ti-history" style={{ marginRight:6,color:"#999" }}></i>Riwayat size {detailRec.mold_size}</div>
                     {sameSize.map(r=>(
                       <div key={r.id} style={{ paddingBottom:10,marginBottom:10,borderBottom:"1px solid #f0f0f0",cursor:"pointer" }} onClick={()=>setDetailId(r.id)}>
-                        <div style={{ fontSize:11,color:"#999",marginBottom:6 }}>{r.date}{r.jam_mulai?` · ${r.jam_mulai}–${r.jam_selesai}`:""}{r.machine_code?` · ${r.machine_code}`:""}</div>
+                        <div style={{ fontSize:11,color:"#999",marginBottom:6 }}>{r.date}{r.machine_code?` · ${r.machine_code}`:""}</div>
                         <DetailSummary rec={{...r,problemDetails:r.problem_details,problems:r.problems||[]}}/>
                       </div>
                     ))}
@@ -1768,14 +1737,7 @@ export default function App() {
                           <label className="form-label">Nama checker *</label>
                           <input className="form-input" placeholder="Nama checker QC" value={qcForm.checker} onChange={e=>setQcForm(f=>({...f,checker:e.target.value}))} />
                         </div>
-                        <div className="form-group">
-                          <label className="form-label">Jam mulai</label>
-                          <input type="time" className="form-input" value={qcForm.jamMulai} onChange={e=>setQcForm(f=>({...f,jamMulai:e.target.value}))} />
-                        </div>
-                        <div className="form-group">
-                          <label className="form-label">Jam selesai</label>
-                          <input type="time" className="form-input" value={qcForm.jamSelesai} onChange={e=>setQcForm(f=>({...f,jamSelesai:e.target.value}))} />
-                        </div>
+
                       </div>
 
                       {/* Kondisi cavity */}
@@ -1874,7 +1836,7 @@ export default function App() {
                                 </div>
                                 <div style={{ fontSize:11,color:"#666",marginTop:4 }}>
                                   <div>Checker: <strong>{r.checker}</strong></div>
-                                  {r.jam_mulai&&<div>Jam: {r.jam_mulai}–{r.jam_selesai}</div>}
+
                                   {r.defects?.length>0&&<div style={{ marginTop:4 }}>Cacat: {r.defects.map(d=><span key={d} style={{ background:"#FCEBEB",color:"#791F1F",fontSize:11,padding:"1px 8px",borderRadius:4,marginRight:4,fontWeight:500 }}>{d}</span>)}</div>}
                                   {r.cavity_condition&&<div style={{ marginTop:4,color:"#999" }}>Cavity: {r.cavity_condition}</div>}
                                   {r.repair_notes&&<div style={{ marginTop:4,color:"#999" }}>📝 {r.repair_notes}</div>}
@@ -2022,15 +1984,7 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* JAM */}
-                    <div className="form-group">
-                      <label className="form-label">Jam pengerjaan</label>
-                      <div style={{ display:"flex",gap:8,alignItems:"center" }}>
-                        <input type="time" className="form-input" value={rakitForm.jamMulai} onChange={e=>setRakitForm(f=>({...f,jamMulai:e.target.value}))} />
-                        <span style={{ color:"#999" }}>–</span>
-                        <input type="time" className="form-input" value={rakitForm.jamSelesai} onChange={e=>setRakitForm(f=>({...f,jamSelesai:e.target.value}))} />
-                      </div>
-                    </div>
+
 
                     {/* OPERATOR */}
                     <AutocompleteInput label="Operator / PIC *" value={rakitForm.operator} onChange={v=>setRakitForm(f=>({...f,operator:v}))} suggestions={knownTechs} placeholder="Ketik nama operator..."/>
@@ -2085,7 +2039,7 @@ export default function App() {
                           )}
                           {r.kondisi_cavity&&<div style={{ fontSize:11,color:"#666",marginBottom:2 }}>Cavity: {r.kondisi_cavity}</div>}
                           {r.kondisi_container&&<div style={{ fontSize:11,color:"#666",marginBottom:2 }}>Container: {r.kondisi_container}</div>}
-                          {r.jam_mulai&&r.jam_selesai&&<div style={{ fontSize:11,color:"#999",marginBottom:4 }}>⏱ {r.jam_mulai}–{r.jam_selesai}</div>}
+
                           {r.catatan&&<div style={{ fontSize:11,color:"#666",marginBottom:4 }}>📝 {r.catatan}</div>}
                           <div className="record-meta"><i className="ti ti-user" style={{ fontSize:12,marginRight:4 }}></i>{r.operator}</div>
                         </div>
@@ -2208,15 +2162,7 @@ export default function App() {
                     </div>
                   )}
 
-                  {/* JAM */}
-                  <div className="form-group" style={{ marginTop:4 }}>
-                    <label className="form-label">Jam pengerjaan</label>
-                    <div style={{ display:"flex",gap:8,alignItems:"center" }}>
-                      <input type="time" className="form-input" value={naikForm.jamMulai} onChange={e=>setNaikForm(f=>({...f,jamMulai:e.target.value}))} />
-                      <span style={{ color:"#999" }}>–</span>
-                      <input type="time" className="form-input" value={naikForm.jamSelesai} onChange={e=>setNaikForm(f=>({...f,jamSelesai:e.target.value}))} />
-                    </div>
-                  </div>
+
 
                   {/* PIC */}
                   <AutocompleteInput label="PIC / Operator *" value={naikForm.operator} onChange={v=>setNaikForm(f=>({...f,operator:v}))} suggestions={knownTechs} placeholder="Ketik nama PIC..."/>
@@ -2246,7 +2192,7 @@ export default function App() {
                           </div>
                           <div style={{ fontSize:11,color:"#999",textAlign:"right" }}>
                             <div>{r.date}</div>
-                            <div>{r.jam_mulai&&r.jam_selesai?`${r.jam_mulai}–${r.jam_selesai}`:""}</div>
+                            
                           </div>
                         </div>
                         {r.machine_code&&<div style={{ fontSize:12,fontWeight:600,color:"#1D9E75",marginBottom:6 }}><i className="ti ti-robot" style={{ fontSize:13,marginRight:4 }}></i>{r.machine_code}</div>}
