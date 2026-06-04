@@ -675,8 +675,23 @@ function UserManagementPage({ showToast }) {
 
 // ── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function App() {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [page, setPage]       = useState("dashboard");
+  const [currentUser, setCurrentUser] = useState(() => {
+    try { const s=localStorage.getItem("moldtrack_user"); return s?JSON.parse(s):null; } catch { return null; }
+  });
+  const [page, setPage] = useState(() => {
+    try {
+      const s = localStorage.getItem("moldtrack_user");
+      if (!s) return "dashboard";
+      const u = JSON.parse(s);
+      if (u.role==="teknisi")   return "entry";
+      if (u.role==="persiapan") return "persiapan";
+      if (u.role==="qcgate")    return "qcgate";
+      if (u.role==="naik")      return "naik";
+      if (u.role==="rakit")     return "rakit";
+      if (u.role==="sh")        return "shplan";
+      return "dashboard";
+    } catch { return "dashboard"; }
+  });
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(false);
   const [form, setForm]       = useState(emptyForm());
@@ -722,24 +737,7 @@ export default function App() {
   const role = currentUser?.role || "";
   const showToast = (msg, type="success") => { setToast({msg,type}); setTimeout(()=>setToast(null),2800); };
 
-  // session persist — localStorage agar tetap ada setelah refresh
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("moldtrack_user");
-      if (saved) {
-        const user = JSON.parse(saved);
-        let startPage = "dashboard";
-        if (user.role === "teknisi")        startPage = "entry";
-        else if (user.role === "persiapan") startPage = "persiapan";
-        else if (user.role === "qcgate")    startPage = "qcgate";
-        else if (user.role === "naik")      startPage = "naik";
-        else if (user.role === "rakit")     startPage = "rakit";
-    else if (user.role === "sh")         startPage = "shplan";
-        setPage(startPage);
-        setCurrentUser(user);
-      }
-    } catch { localStorage.removeItem("moldtrack_user"); }
-  }, []);
+  // session restore sudah dilakukan via lazy useState init
 
   const handleLogin = (user) => {
     localStorage.setItem("moldtrack_user", JSON.stringify(user));
@@ -1121,8 +1119,7 @@ export default function App() {
                 <div className="topbar-title">
                   {page==="dashboard"&&"Dashboard"}
                   {page==="shplan"&&"Shift Plan"}
-                  {/* SHIFT PLAN — Section Head */}
-            {page==="shplan"&&canSH(role)&&(
+                  &(
               <div>
                 {/* TAB */}
                 <div style={{ display:"flex",gap:8,marginBottom:16 }}>
