@@ -1483,7 +1483,7 @@ export default function App() {
                 <button className="btn-primary" onClick={submitForm}>{editId?"Update record":"Simpan record"}</button>
                 <button className="btn-secondary" onClick={()=>{setForm(emptyForm());setEditId(null);}}>Reset</button>
                 </div>}
-                {entryTab==="database"&&<div>
+                {entryTab==="database"&&                <div>
                 <div className="search-wrap">
                   <i className="ti ti-search search-icon"></i>
                   <input className="search-input" placeholder="Cari size, teknisi, kode mesin..." value={search} onChange={e=>setSearch(e.target.value)}/>
@@ -1523,9 +1523,10 @@ export default function App() {
               </div>
             )}
 
-            {/* DATABASE — hanya untuk analyst/adh/dh/admin yang akses langsung dari nav */}
-            {page==="database"&&canDatabase(role)&&!canEntry(role)&&(
+            {/* DATABASE — analyst/adh/dh/admin dari nav */}
+            {page==="database"&&canDatabase(role)&&(
               <div>
+                <div>
                 <div className="search-wrap">
                   <i className="ti ti-search search-icon"></i>
                   <input className="search-input" placeholder="Cari size, teknisi, kode mesin..." value={search} onChange={e=>setSearch(e.target.value)}/>
@@ -1539,7 +1540,6 @@ export default function App() {
                     <option value="">Semua teknisi</option>
                     {knownTechs.map(t=><option key={t}>{t}</option>)}
                   </select>
-                  {canEntry(role)&&<button className="btn-primary" style={{ width:"auto",padding:"8px 14px",margin:0,flexShrink:0 }} onClick={()=>navTo("entry")}>+ Entry</button>}
                   <button style={{ padding:"8px 14px",borderRadius:8,border:"1.5px solid #1D9E75",background:"#E1F5EE",color:"#085041",fontSize:12,fontWeight:600,cursor:"pointer",flexShrink:0,whiteSpace:"nowrap" }} onClick={()=>exportToExcel(records)}>
                     ⬇ Excel
                   </button>
@@ -1562,6 +1562,7 @@ export default function App() {
                     </div>
                   </div>
                 ))}
+                </div>
               </div>
             )}
 
