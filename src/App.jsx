@@ -36,10 +36,13 @@ const WA_GROUPS = {
   "d": { persiapan:"6281234560031", qcgate:"6281234560032", rakit:"6281234560033", naik:"6281234560034", sh:"6281234560035" },
 };
 
-// Kirim notif WA — buka tab baru dengan pesan otomatis
+// Kirim notif WA — simpan ke antrian notif untuk ditampilkan ke user
 const sendWA = (phone, msg) => {
   const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
-  window.open(url, "_blank");
+  // Buka langsung — user harus allow popup, atau gunakan link manual
+  const a = document.createElement("a");
+  a.href = url; a.target = "_blank"; a.rel = "noopener noreferrer";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
 };
 
 // Helper notifikasi per tahap
@@ -1202,21 +1205,30 @@ export default function App() {
                     <button className="btn-primary" onClick={submitShiftPlan}>
                       📋 Submit Shift Plan + Kirim Notif WA
                     </button>
+                    <div style={{ marginTop:10,padding:"10px 14px",background:"#FEF3C7",borderRadius:8,fontSize:11,color:"#92400E" }}>
+                      ⚠️ <strong>Catatan:</strong> Jika notif WA tidak terbuka otomatis, pastikan browser mengizinkan popup dari situs ini, atau klik tombol di tab Tracker untuk kirim manual.
+                    </div>
                   </div>
                 )}
 
                 {/* TRACKER */}
-                {shTab==="tracker"&&(
+                {shTab==="tracker"&&(()=>{
+                  const myGrup = getGrup(currentUser?.username);
+                  const myPlans = shiftPlanRecords.filter(p=> !myGrup || p.grup===myGrup);
+                  return(
                   <div>
-                    <div style={{ fontSize:13,fontWeight:600,color:"#111",marginBottom:12 }}>
-                      📊 Progress Tracker — {new Date().toLocaleDateString("id-ID",{dateStyle:"long"})}
+                    <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
+                      <div style={{ fontSize:13,fontWeight:600,color:"#111" }}>
+                        📊 Progress Tracker — Grup {myGrup?.toUpperCase()||"Semua"}
+                      </div>
+                      <div style={{ fontSize:11,color:"#999" }}>{myPlans.length} size terjadwal</div>
                     </div>
-                    {shiftPlanRecords.length===0&&(
+                    {myPlans.length===0&&(
                       <div className="card" style={{ textAlign:"center",color:"#999",fontSize:13,padding:24 }}>
-                        Belum ada shift plan hari ini.
+                        Belum ada shift plan. Silakan input di tab Input Shift.
                       </div>
                     )}
-                    {shiftPlanRecords.map(plan=>{
+                    {myPlans.map(plan=>{
                       const STEPS = [
                         { id:"persiapan", label:"Persiapan",  icon:"📦" },
                         { id:"qc1",       label:"QC Gate 1",  icon:"🔍" },
@@ -1281,11 +1293,32 @@ export default function App() {
                           </div>
 
                           {plan.catatan&&<div style={{ fontSize:11,color:"#666",marginTop:4 }}>📝 {plan.catatan}</div>}
+                          {/* Tombol WA manual per tahap */}
+                          <div style={{ marginTop:8,display:"flex",gap:6,flexWrap:"wrap" }}>
+                            {!hasPersiapan&&<a href={`https://wa.me/${WA_GROUPS[plan.grup]?.persiapan||""}?text=${encodeURIComponent("[MoldTrack] 📦 PERSIAPAN MOLD
+Size: "+plan.mold_size+"
+Shift: "+plan.shift+"
+Mohon segera persiapan mold.")}`} target="_blank" rel="noopener noreferrer"
+                              style={{ fontSize:11,padding:"4px 10px",borderRadius:6,background:"#E1F5EE",color:"#085041",border:"1px solid #1D9E75",textDecoration:"none",fontWeight:600 }}>📱 WA Persiapan</a>}
+                            {hasPersiapan&&!hasQC1&&<a href={`https://wa.me/${WA_GROUPS[plan.grup]?.qcgate||""}?text=${encodeURIComponent("[MoldTrack] 🔍 QC GATE 1
+Size: "+plan.mold_size+"
+Mold selesai persiapan. Mohon cek visual.")}`} target="_blank" rel="noopener noreferrer"
+                              style={{ fontSize:11,padding:"4px 10px",borderRadius:6,background:"#FEF3C7",color:"#92400E",border:"1px solid #E8A020",textDecoration:"none",fontWeight:600 }}>📱 WA QC Gate 1</a>}
+                            {hasQC1&&!hasRakit&&<a href={`https://wa.me/${WA_GROUPS[plan.grup]?.rakit||""}?text=${encodeURIComponent("[MoldTrack] 🔨 RAKIT MOLD
+Size: "+plan.mold_size+"
+Lulus QC Gate 1. Mohon segera rakit mold.")}`} target="_blank" rel="noopener noreferrer"
+                              style={{ fontSize:11,padding:"4px 10px",borderRadius:6,background:"#EDE9FE",color:"#5B21B6",border:"1px solid #8B5CF6",textDecoration:"none",fontWeight:600 }}>📱 WA Rakit</a>}
+                            {hasRakit&&!hasNaik&&<a href={`https://wa.me/${WA_GROUPS[plan.grup]?.naik||""}?text=${encodeURIComponent("[MoldTrack] ⬆️ NAIK MOLD
+Size: "+plan.mold_size+"
+Lulus QC Gate 2. Siap naik ke mesin.")}`} target="_blank" rel="noopener noreferrer"
+                              style={{ fontSize:11,padding:"4px 10px",borderRadius:6,background:"#FCEBEB",color:"#791F1F",border:"1px solid #E24B4A",textDecoration:"none",fontWeight:600 }}>📱 WA Naik</a>}
+                          </div>
                         </div>
                       );
                     })}
                   </div>
-                )}
+                  );
+                })()}
               </div>
             )}
 
@@ -1715,18 +1748,27 @@ export default function App() {
                     <button className="btn-primary" onClick={submitShiftPlan}>
                       📋 Submit Shift Plan + Kirim Notif WA
                     </button>
+                    <div style={{ marginTop:10,padding:"10px 14px",background:"#FEF3C7",borderRadius:8,fontSize:11,color:"#92400E" }}>
+                      ⚠️ <strong>Catatan:</strong> Jika notif WA tidak terbuka otomatis, pastikan browser mengizinkan popup dari situs ini, atau klik tombol di tab Tracker untuk kirim manual.
+                    </div>
                   </div>
                 )}
 
                 {/* TRACKER */}
-                {shTab==="tracker"&&(
+                {shTab==="tracker"&&(()=>{
+                  const myGrup = getGrup(currentUser?.username);
+                  const myPlans = shiftPlanRecords.filter(p=> !myGrup || p.grup===myGrup);
+                  return(
                   <div>
-                    <div style={{ fontSize:13,fontWeight:600,color:"#111",marginBottom:12 }}>
-                      📊 Progress Tracker — {new Date().toLocaleDateString("id-ID",{dateStyle:"long"})}
+                    <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
+                      <div style={{ fontSize:13,fontWeight:600,color:"#111" }}>
+                        📊 Progress Tracker — Grup {myGrup?.toUpperCase()||"Semua"}
+                      </div>
+                      <div style={{ fontSize:11,color:"#999" }}>{myPlans.length} size terjadwal</div>
                     </div>
-                    {shiftPlanRecords.length===0&&(
+                    {myPlans.length===0&&(
                       <div className="card" style={{ textAlign:"center",color:"#999",fontSize:13,padding:24 }}>
-                        Belum ada shift plan hari ini.
+                        Belum ada shift plan. Silakan input di tab Input Shift.
                       </div>
                     )}
                     {shiftPlanRecords.map(plan=>{
