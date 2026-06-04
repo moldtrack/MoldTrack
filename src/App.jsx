@@ -619,6 +619,7 @@ export default function App() {
   const [toast, setToast]     = useState(null);
   const [filterMonth, setFilterMonth]     = useState(new Date().toISOString().slice(0,7));
   const [entryTab, setEntryTab]           = useState("form");
+  const [dbTab, setDbTab]                 = useState("action");
   const [naikTab, setNaikTab]             = useState("form");
 
   // persiapan state
@@ -1523,46 +1524,193 @@ export default function App() {
               </div>
             )}
 
-            {/* DATABASE — analyst/adh/dh/admin dari nav */}
+            {/* DATABASE — tab per proses untuk admin/adh/dh/analyst */}
             {page==="database"&&canDatabase(role)&&(
               <div>
-                <div>
-                <div className="search-wrap">
-                  <i className="ti ti-search search-icon"></i>
-                  <input className="search-input" placeholder="Cari size, teknisi, kode mesin..." value={search} onChange={e=>setSearch(e.target.value)}/>
+                {/* TAB PROSES */}
+                <div style={{ display:"flex",gap:6,marginBottom:14,overflowX:"auto",paddingBottom:2 }}>
+                  {[
+                    ["action","🔧 Action Problem", records.length],
+                    ["persiapan","📦 Persiapan", prepRecords.length],
+                    ["qc","🔍 QC Gate", qcRecords.length],
+                    ["rakit","🔨 Rakit Mold", rakitRecords.length],
+                    ["naik","⬆️ Naik Mold", naikRecords.length],
+                  ].map(([id,lbl,cnt])=>(
+                    <button key={id} onClick={()=>setDbTab(id)}
+                      style={{ flexShrink:0,padding:"8px 14px",borderRadius:8,border:"1.5px solid",cursor:"pointer",fontSize:12,fontWeight:600,
+                        borderColor:dbTab===id?"#1D9E75":"#e0e0e0",
+                        background:dbTab===id?"#1D9E75":"#fff",
+                        color:dbTab===id?"#fff":"#666" }}>
+                      {lbl} <span style={{ fontSize:10,opacity:0.8,marginLeft:2 }}>({cnt})</span>
+                    </button>
+                  ))}
                 </div>
-                <div className="filter-row">
-                  <select className="filter-select" value={filterProblem} onChange={e=>setFilterProblem(e.target.value)}>
-                    <option value="">Semua problem</option>
-                    {PROBLEMS.map(p=><option key={p.id} value={p.id}>{p.label}</option>)}
-                  </select>
-                  <select className="filter-select" value={filterTech} onChange={e=>setFilterTech(e.target.value)}>
-                    <option value="">Semua teknisi</option>
-                    {knownTechs.map(t=><option key={t}>{t}</option>)}
-                  </select>
-                  <button style={{ padding:"8px 14px",borderRadius:8,border:"1.5px solid #1D9E75",background:"#E1F5EE",color:"#085041",fontSize:12,fontWeight:600,cursor:"pointer",flexShrink:0,whiteSpace:"nowrap" }} onClick={()=>exportToExcel(records)}>
-                    ⬇ Excel
-                  </button>
-                </div>
-                <div style={{ fontSize:12,color:"#999",marginBottom:10 }}>{filtered.length} record ditemukan</div>
-                {filtered.length===0&&<div className="card" style={{ textAlign:"center",color:"#999",fontSize:13,padding:24 }}>Tidak ada record yang sesuai filter.</div>}
-                {filtered.map(r=>(
-                  <div key={r.id} className="record-card">
-                    <div className="record-card-header" onClick={()=>{setDetailId(r.id);setPage("detail");}}>
-                      <div><div className="record-size">{r.mold_size}</div><div className="record-type">{r.mold_type==="segmented"?"Segmented":"Two Piece"}</div></div>
-                      <div style={{ fontSize:11,color:"#999",textAlign:"right" }}><div>{r.date}</div></div>
+
+                {/* TAB: ACTION PROBLEM */}
+                {dbTab==="action"&&(
+                  <div>
+                    <div className="search-wrap">
+                      <i className="ti ti-search search-icon"></i>
+                      <input className="search-input" placeholder="Cari size, teknisi, kode mesin..." value={search} onChange={e=>setSearch(e.target.value)}/>
                     </div>
-                    {r.machine_code&&<div style={{ fontSize:12,fontWeight:600,color:"#1D9E75",marginBottom:6 }}><i className="ti ti-robot" style={{ fontSize:13,marginRight:4 }}></i>{r.machine_code}</div>}
-                    <div style={{ marginBottom:6 }}><DetailSummary rec={{...r,problemDetails:r.problem_details,problems:r.problems||[]}}/></div>
-                    <div className="record-meta" style={{ marginBottom:8 }}><i className="ti ti-user" style={{ fontSize:12,marginRight:4 }}></i>{r.technician}</div>
-                    <div className="record-actions">
-                      <button className="btn-sm" onClick={()=>{setDetailId(r.id);setPage("detail");}}>Detail</button>
-                      {canEditDelete(r)&&<button className="btn-sm" onClick={()=>startEdit(r)}>Edit</button>}
-                      {canEditDelete(r)&&<button className="btn-sm-danger" onClick={()=>deleteRecord(r.id)}>Hapus</button>}
+                    <div className="filter-row">
+                      <select className="filter-select" value={filterProblem} onChange={e=>setFilterProblem(e.target.value)}>
+                        <option value="">Semua problem</option>
+                        {PROBLEMS.map(p=><option key={p.id} value={p.id}>{p.label}</option>)}
+                      </select>
+                      <select className="filter-select" value={filterTech} onChange={e=>setFilterTech(e.target.value)}>
+                        <option value="">Semua teknisi</option>
+                        {knownTechs.map(t=><option key={t}>{t}</option>)}
+                      </select>
+                      <button style={{ padding:"8px 14px",borderRadius:8,border:"1.5px solid #1D9E75",background:"#E1F5EE",color:"#085041",fontSize:12,fontWeight:600,cursor:"pointer",flexShrink:0 }} onClick={()=>exportToExcel(records)}>⬇ Excel</button>
                     </div>
+                    <div style={{ fontSize:12,color:"#999",marginBottom:10 }}>{filtered.length} record</div>
+                    {filtered.length===0&&<div className="card" style={{ textAlign:"center",color:"#999",fontSize:13,padding:24 }}>Belum ada data.</div>}
+                    {filtered.map(r=>(
+                      <div key={r.id} className="record-card">
+                        <div className="record-card-header" onClick={()=>{setDetailId(r.id);setPage("detail");}}>
+                          <div><div className="record-size">{r.mold_size}</div><div className="record-type">{r.mold_type==="segmented"?"Segmented":"Two Piece"}</div></div>
+                          <div style={{ fontSize:11,color:"#999",textAlign:"right" }}><div>{r.date}</div></div>
+                        </div>
+                        {r.machine_code&&<div style={{ fontSize:12,fontWeight:600,color:"#1D9E75",marginBottom:6 }}><i className="ti ti-robot" style={{ fontSize:13,marginRight:4 }}></i>{r.machine_code}</div>}
+                        <div style={{ marginBottom:6 }}><DetailSummary rec={{...r,problemDetails:r.problem_details,problems:r.problems||[]}}/></div>
+                        <div className="record-meta" style={{ marginBottom:8 }}><i className="ti ti-user" style={{ fontSize:12,marginRight:4 }}></i>{r.technician}</div>
+                        <div className="record-actions">
+                          <button className="btn-sm" onClick={()=>{setDetailId(r.id);setPage("detail");}}>Detail</button>
+                          {canEditDelete(r)&&<button className="btn-sm" onClick={()=>startEdit(r)}>Edit</button>}
+                          {canEditDelete(r)&&<button className="btn-sm-danger" onClick={()=>deleteRecord(r.id)}>Hapus</button>}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-                </div>
+                )}
+
+                {/* TAB: PERSIAPAN */}
+                {dbTab==="persiapan"&&(
+                  <div>
+                    <div style={{ fontSize:12,color:"#999",marginBottom:10 }}>{prepRecords.length} record</div>
+                    {prepRecords.length===0&&<div className="card" style={{ textAlign:"center",color:"#999",fontSize:13,padding:24 }}>Belum ada data.</div>}
+                    {prepRecords.map(r=>(
+                      <div key={r.id} className="record-card">
+                        <div className="record-card-header">
+                          <div>
+                            <div className="record-size">{r.mold_size}</div>
+                            <div className="record-type">{r.mold_serial}</div>
+                          </div>
+                          <div style={{ textAlign:"right" }}>
+                            <div style={{ fontSize:11,color:"#999" }}>{r.date}</div>
+                            <div style={{ marginTop:4 }}>
+                              <span style={{ fontSize:11,padding:"2px 10px",borderRadius:20,fontWeight:600,
+                                background:r.status==="out"?"#FEF3C7":"#E1F5EE",
+                                color:r.status==="out"?"#92400E":"#085041" }}>
+                                {r.status==="out"?"📤 Keluar":"📥 Kembali"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        {r.slot_location&&<div style={{ fontSize:11,color:"#666",marginBottom:4 }}>📍 {r.slot_location}</div>}
+                        <div className="record-meta"><i className="ti ti-user" style={{ fontSize:12,marginRight:4 }}></i>{r.operator} {r.grup?`· Grup ${r.grup}`:""}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* TAB: QC GATE */}
+                {dbTab==="qc"&&(()=>{
+                  const statusCfg = {
+                    ok:    { label:"✅ OK",    bg:"#E1F5EE", color:"#085041" },
+                    minor: { label:"⚠️ Minor", bg:"#FEF3C7", color:"#92400E" },
+                    major: { label:"🚫 Major", bg:"#FCEBEB", color:"#791F1F" },
+                  };
+                  return(
+                    <div>
+                      <div style={{ fontSize:12,color:"#999",marginBottom:10 }}>{qcRecords.length} record</div>
+                      {qcRecords.length===0&&<div className="card" style={{ textAlign:"center",color:"#999",fontSize:13,padding:24 }}>Belum ada data.</div>}
+                      {qcRecords.map(r=>{
+                        const cfg=statusCfg[r.status]||statusCfg.ok;
+                        return(
+                          <div key={r.id} className="record-card">
+                            <div className="record-card-header">
+                              <div>
+                                <div className="record-size">{r.mold_size}</div>
+                                {r.mold_serial&&<div className="record-type">SN: {r.mold_serial}</div>}
+                              </div>
+                              <div style={{ textAlign:"right" }}>
+                                <div style={{ fontSize:11,color:"#999" }}>{r.date}</div>
+                                <div style={{ marginTop:4 }}><span style={{ fontSize:11,padding:"2px 10px",borderRadius:20,fontWeight:600,background:cfg.bg,color:cfg.color }}>{cfg.label}</span></div>
+                              </div>
+                            </div>
+                            {r.machine_code&&<div style={{ fontSize:12,fontWeight:600,color:"#1D9E75",marginBottom:4 }}><i className="ti ti-robot" style={{ fontSize:13,marginRight:4 }}></i>{r.machine_code}</div>}
+                            {r.defects?.length>0&&<div style={{ fontSize:11,color:"#666",marginBottom:4 }}>Cacat: {r.defects.map(d=><span key={d} style={{ background:"#FCEBEB",color:"#791F1F",fontSize:11,padding:"1px 8px",borderRadius:4,marginRight:4 }}>{d}</span>)}</div>}
+                            {r.repair_notes&&<div style={{ fontSize:11,color:"#666",marginBottom:4 }}>📝 {r.repair_notes}</div>}
+                            <div className="record-meta"><i className="ti ti-user" style={{ fontSize:12,marginRight:4 }}></i>{r.checker} {r.grup?`· Grup ${r.grup}`:""}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+
+                {/* TAB: RAKIT MOLD */}
+                {dbTab==="rakit"&&(()=>{
+                  const hasilCfg = {
+                    ok:           { label:"✅ OK",           bg:"#E1F5EE", color:"#085041" },
+                    perlu_review: { label:"⚠️ Perlu Review", bg:"#FEF3C7", color:"#92400E" },
+                    ditahan:      { label:"🚫 Ditahan",       bg:"#FCEBEB", color:"#791F1F" },
+                  };
+                  return(
+                    <div>
+                      <div style={{ fontSize:12,color:"#999",marginBottom:10 }}>{rakitRecords.length} record</div>
+                      {rakitRecords.length===0&&<div className="card" style={{ textAlign:"center",color:"#999",fontSize:13,padding:24 }}>Belum ada data.</div>}
+                      {rakitRecords.map(r=>{
+                        const cfg=hasilCfg[r.hasil_rakit]||hasilCfg.ok;
+                        return(
+                          <div key={r.id} className="record-card">
+                            <div className="record-card-header">
+                              <div>
+                                <div className="record-size">🔨 {r.mold_size}</div>
+                                {r.mold_serial&&<div className="record-type">SN: {r.mold_serial}</div>}
+                              </div>
+                              <div style={{ textAlign:"right" }}>
+                                <div style={{ fontSize:11,color:"#999" }}>{r.date}</div>
+                                <div style={{ marginTop:4 }}><span style={{ fontSize:11,padding:"2px 10px",borderRadius:20,fontWeight:600,background:cfg.bg,color:cfg.color }}>{cfg.label}</span></div>
+                              </div>
+                            </div>
+                            {r.machine_code&&<div style={{ fontSize:12,fontWeight:600,color:"#1D9E75",marginBottom:4 }}><i className="ti ti-robot" style={{ fontSize:13,marginRight:4 }}></i>{r.machine_code}</div>}
+                            {r.parts_checked?.length>0&&<div style={{ fontSize:11,color:"#666",marginBottom:4 }}>✅ Komponen: {r.parts_checked.length}/8 dicek</div>}
+                            {r.catatan&&<div style={{ fontSize:11,color:"#666",marginBottom:4 }}>📝 {r.catatan}</div>}
+                            <div className="record-meta"><i className="ti ti-user" style={{ fontSize:12,marginRight:4 }}></i>{r.operator} {r.grup?`· Grup ${r.grup}`:""}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+
+                {/* TAB: NAIK MOLD */}
+                {dbTab==="naik"&&(
+                  <div>
+                    <div style={{ fontSize:12,color:"#999",marginBottom:10 }}>{naikRecords.length} record</div>
+                    {naikRecords.length===0&&<div className="card" style={{ textAlign:"center",color:"#999",fontSize:13,padding:24 }}>Belum ada data.</div>}
+                    {naikRecords.map(r=>(
+                      <div key={r.id} className="record-card">
+                        <div className="record-card-header">
+                          <div>
+                            <div className="record-size">⬆️ {r.mold_size_naik}</div>
+                            {r.mold_size_turun&&<div className="record-type">⬇️ Turun: {r.mold_size_turun}</div>}
+                          </div>
+                          <div style={{ fontSize:11,color:"#999",textAlign:"right" }}><div>{r.date}</div></div>
+                        </div>
+                        {r.machine_code&&<div style={{ fontSize:12,fontWeight:600,color:"#1D9E75",marginBottom:4 }}><i className="ti ti-robot" style={{ fontSize:13,marginRight:4 }}></i>{r.machine_code}</div>}
+                        {(r.press||[]).length>0&&<div style={{ fontSize:11,color:"#666",marginBottom:2 }}>Press: <strong>{r.press.join(" & ")}</strong></div>}
+                        {(r.maker_container_l||r.maker_container_r)&&<div style={{ fontSize:11,color:"#666",marginBottom:2 }}>Maker: {[r.maker_container_l,r.maker_container_r].filter(Boolean).join(" / ")}</div>}
+                        {(r.container_no_l||r.container_no_r)&&<div style={{ fontSize:11,color:"#666",marginBottom:2 }}>Container: {[r.container_no_l,r.container_no_r].filter(Boolean).join(" / ")}</div>}
+                        {r.notes&&<div style={{ fontSize:11,color:"#666",marginBottom:4 }}>📝 {r.notes}</div>}
+                        <div className="record-meta"><i className="ti ti-user" style={{ fontSize:12,marginRight:4 }}></i>{r.operator} {r.grup?`· Grup ${r.grup}`:""}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
