@@ -633,7 +633,7 @@ export default function App() {
   const emptyQcForm = () => ({ moldSize:"", moldSerial:"", cavityCondition:"", defects:[], status:"ok", repairNotes:"", checker:"",  date:new Date().toISOString().slice(0,10) });
   const [qcForm, setQcForm]         = useState(emptyQcForm());
 
-  const emptyNaikForm = () => ({ moldSizeNaik:"", moldSizeTurun:"", plant:"", line:"", machine:"", containerNoL:"", containerNoR:"", moldNoL:"", moldNoR:"", turunContainerNoL:"", turunContainerNoR:"", turunMoldNoL:"", turunMoldNoR:"",  operator:"", notes:"", date:new Date().toISOString().slice(0,10) });
+  const emptyNaikForm = () => ({ moldSizeNaik:"", moldSizeTurun:"", plant:"", line:"", machine:"", press:[], makerContainerL:"", makerContainerR:"", typeContainerL:"", typeContainerR:"", containerNoL:"", containerNoR:"", moldNoL:"", moldNoR:"", turunMakerContainerL:"", turunMakerContainerR:"", turunTypeContainerL:"", turunTypeContainerR:"", turunContainerNoL:"", turunContainerNoR:"", turunMoldNoL:"", turunMoldNoR:"", operator:"", notes:"", date:new Date().toISOString().slice(0,10) });
   const [naikForm, setNaikForm]     = useState(emptyNaikForm());
   const [naikRecords, setNaikRecords] = useState([]);
 
@@ -717,25 +717,34 @@ export default function App() {
       showToast("Lengkapi: size mold naik, mesin, dan operator.","error"); return;
     }
     const payload = {
-      mold_size_naik:   naikForm.moldSizeNaik.trim().toUpperCase(),
-      mold_size_turun:      naikForm.moldSizeTurun.trim().toUpperCase()||null,
-      turun_container_no_l: naikForm.turunContainerNoL.trim().toUpperCase()||null,
-      turun_container_no_r: naikForm.turunContainerNoR.trim().toUpperCase()||null,
-      turun_mold_no_l:      naikForm.turunMoldNoL.trim().toUpperCase()||null,
-      turun_mold_no_r:      naikForm.turunMoldNoR.trim().toUpperCase()||null,
-      plant:            naikForm.plant,
-      line:             naikForm.line,
-      machine:          naikForm.machine,
-      machine_code:     `${naikForm.plant}-${naikForm.line}${naikForm.machine}`,
-      container_no_l:   naikForm.containerNoL.trim().toUpperCase()||null,
-      container_no_r:   naikForm.containerNoR.trim().toUpperCase()||null,
-      mold_no_l:        naikForm.moldNoL.trim().toUpperCase()||null,
-      mold_no_r:        naikForm.moldNoR.trim().toUpperCase()||null,
-      operator:         naikForm.operator.trim(),
-      date:             naikForm.date,
-      notes:            naikForm.notes||null,
-      created_by:       currentUser?.id,
-      grup:             getGrup(currentUser?.username),
+      mold_size_naik:        naikForm.moldSizeNaik.trim().toUpperCase(),
+      mold_size_turun:       naikForm.moldSizeTurun.trim().toUpperCase()||null,
+      press:                 naikForm.press||[],
+      plant:                 naikForm.plant,
+      line:                  naikForm.line,
+      machine:               naikForm.machine,
+      machine_code:          `${naikForm.plant}-${naikForm.line}${naikForm.machine}`,
+      maker_container_l:     naikForm.makerContainerL||null,
+      maker_container_r:     naikForm.makerContainerR||null,
+      type_container_l:      naikForm.typeContainerL||null,
+      type_container_r:      naikForm.typeContainerR||null,
+      container_no_l:        naikForm.containerNoL.trim().toUpperCase()||null,
+      container_no_r:        naikForm.containerNoR.trim().toUpperCase()||null,
+      mold_no_l:             naikForm.moldNoL.trim().toUpperCase()||null,
+      mold_no_r:             naikForm.moldNoR.trim().toUpperCase()||null,
+      turun_maker_container_l: naikForm.turunMakerContainerL||null,
+      turun_maker_container_r: naikForm.turunMakerContainerR||null,
+      turun_type_container_l:  naikForm.turunTypeContainerL||null,
+      turun_type_container_r:  naikForm.turunTypeContainerR||null,
+      turun_container_no_l:  naikForm.turunContainerNoL.trim().toUpperCase()||null,
+      turun_container_no_r:  naikForm.turunContainerNoR.trim().toUpperCase()||null,
+      turun_mold_no_l:       naikForm.turunMoldNoL.trim().toUpperCase()||null,
+      turun_mold_no_r:       naikForm.turunMoldNoR.trim().toUpperCase()||null,
+      operator:              naikForm.operator.trim(),
+      date:                  naikForm.date,
+      notes:                 naikForm.notes||null,
+      created_by:            currentUser?.id,
+      grup:                  getGrup(currentUser?.username),
     };
     const { error } = await supabase.from("naik_mold_records").insert(payload);
     if (error) { showToast("Gagal simpan: "+error.message,"error"); return; }
@@ -2108,61 +2117,140 @@ export default function App() {
                     </div>
                     <div className="form-group">
                       <label className="form-label">Size Mold Turun</label>
-                      <input className="form-input" placeholder="cth: 195/65R15 (jika ada)" value={naikForm.moldSizeTurun} onChange={e=>setNaikForm(f=>({...f,moldSizeTurun:e.target.value}))} />
+                      <input className="form-input" placeholder="cth: 195/65R15 (opsional)" value={naikForm.moldSizeTurun} onChange={e=>setNaikForm(f=>({...f,moldSizeTurun:e.target.value}))} />
                     </div>
                   </div>
 
-                  {/* NO MOLD */}
-                  <div style={{ fontSize:11,color:"#999",fontWeight:600,marginBottom:6,marginTop:4 }}>NO MOLD</div>
+                  {/* PRESS */}
+                  <div className="form-group">
+                    <label className="form-label">Press <span style={{ fontSize:10,color:"#999",fontWeight:400 }}>(bisa pilih keduanya)</span></label>
+                    <div style={{ display:"flex",gap:8 }}>
+                      {["L","R"].map(p=>{
+                        const selected=(naikForm.press||[]).includes(p);
+                        return(
+                          <button key={p} className={`type-btn${selected?" active":""}`} style={{ flex:1 }}
+                            onClick={()=>{ const cur=naikForm.press||[]; setNaikForm(f=>({...f,press:cur.includes(p)?cur.filter(x=>x!==p):[...cur,p]})); }}>
+                            {p==="L"?"◀ Left (L)":"Right (R) ▶"}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {(naikForm.press||[]).length>0&&<div style={{ marginTop:6,fontSize:11,color:"#1D9E75",fontWeight:500 }}>Dipilih: {naikForm.press.join(" & ")}</div>}
+                  </div>
+
+                  {/* MOLD NAIK — Maker, Type, No Container, No Mold */}
+                  <div style={{ fontSize:11,color:"#1D9E75",fontWeight:700,marginBottom:6,marginTop:8,background:"#E1F5EE",padding:"6px 10px",borderRadius:6 }}>⬆️ MOLD NAIK</div>
                   <div className="form-row">
                     <div className="form-group">
-                      <label className="form-label">No Mold L (Naik)</label>
-                      <input className="form-input" placeholder="cth: ML-001" value={naikForm.moldNoL} onChange={e=>setNaikForm(f=>({...f,moldNoL:e.target.value}))} />
+                      <label className="form-label">Maker Container L</label>
+                      <select className="form-input" value={naikForm.makerContainerL} onChange={e=>setNaikForm(f=>({...f,makerContainerL:e.target.value}))}>
+                        <option value="">— Pilih —</option>
+                        {MAKER_CONTAINER.map(m=><option key={m} value={m}>{m}</option>)}
+                      </select>
                     </div>
                     <div className="form-group">
-                      <label className="form-label">No Mold R (Naik)</label>
-                      <input className="form-input" placeholder="cth: MR-001" value={naikForm.moldNoR} onChange={e=>setNaikForm(f=>({...f,moldNoR:e.target.value}))} />
+                      <label className="form-label">Maker Container R</label>
+                      <select className="form-input" value={naikForm.makerContainerR} onChange={e=>setNaikForm(f=>({...f,makerContainerR:e.target.value}))}>
+                        <option value="">— Pilih —</option>
+                        {MAKER_CONTAINER.map(m=><option key={m} value={m}>{m}</option>)}
+                      </select>
                     </div>
                   </div>
-                  {naikForm.moldSizeTurun&&(
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label className="form-label">No Mold L (Turun)</label>
-                        <input className="form-input" placeholder="cth: ML-001" value={naikForm.turunMoldNoL} onChange={e=>setNaikForm(f=>({...f,turunMoldNoL:e.target.value}))} />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">No Mold R (Turun)</label>
-                        <input className="form-input" placeholder="cth: MR-001" value={naikForm.turunMoldNoR} onChange={e=>setNaikForm(f=>({...f,turunMoldNoR:e.target.value}))} />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* NO CONTAINER */}
-                  <div style={{ fontSize:11,color:"#999",fontWeight:600,marginBottom:6,marginTop:4 }}>NO CONTAINER</div>
                   <div className="form-row">
                     <div className="form-group">
-                      <label className="form-label">No Container L (Naik)</label>
+                      <label className="form-label">Type Container L</label>
+                      <select className="form-input" value={naikForm.typeContainerL} onChange={e=>setNaikForm(f=>({...f,typeContainerL:e.target.value}))}>
+                        <option value="">— Pilih —</option>
+                        {TYPE_CONTAINER.map(t=><option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Type Container R</label>
+                      <select className="form-input" value={naikForm.typeContainerR} onChange={e=>setNaikForm(f=>({...f,typeContainerR:e.target.value}))}>
+                        <option value="">— Pilih —</option>
+                        {TYPE_CONTAINER.map(t=><option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="form-label">No Container L</label>
                       <input className="form-input" placeholder="cth: C-001L" value={naikForm.containerNoL} onChange={e=>setNaikForm(f=>({...f,containerNoL:e.target.value}))} />
                     </div>
                     <div className="form-group">
-                      <label className="form-label">No Container R (Naik)</label>
+                      <label className="form-label">No Container R</label>
                       <input className="form-input" placeholder="cth: C-001R" value={naikForm.containerNoR} onChange={e=>setNaikForm(f=>({...f,containerNoR:e.target.value}))} />
                     </div>
                   </div>
-                  {naikForm.moldSizeTurun&&(
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label className="form-label">No Container L (Turun)</label>
-                        <input className="form-input" placeholder="cth: C-001L" value={naikForm.turunContainerNoL} onChange={e=>setNaikForm(f=>({...f,turunContainerNoL:e.target.value}))} />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">No Container R (Turun)</label>
-                        <input className="form-input" placeholder="cth: C-001R" value={naikForm.turunContainerNoR} onChange={e=>setNaikForm(f=>({...f,turunContainerNoR:e.target.value}))} />
-                      </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="form-label">No Mold L</label>
+                      <input className="form-input" placeholder="cth: ML-001" value={naikForm.moldNoL} onChange={e=>setNaikForm(f=>({...f,moldNoL:e.target.value}))} />
                     </div>
+                    <div className="form-group">
+                      <label className="form-label">No Mold R</label>
+                      <input className="form-input" placeholder="cth: MR-001" value={naikForm.moldNoR} onChange={e=>setNaikForm(f=>({...f,moldNoR:e.target.value}))} />
+                    </div>
+                  </div>
+
+                  {/* MOLD TURUN — hanya tampil jika ada size turun */}
+                  {naikForm.moldSizeTurun&&(
+                    <>
+                      <div style={{ fontSize:11,color:"#E24B4A",fontWeight:700,marginBottom:6,marginTop:8,background:"#FCEBEB",padding:"6px 10px",borderRadius:6 }}>⬇️ MOLD TURUN</div>
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label className="form-label">Maker Container L</label>
+                          <select className="form-input" value={naikForm.turunMakerContainerL} onChange={e=>setNaikForm(f=>({...f,turunMakerContainerL:e.target.value}))}>
+                            <option value="">— Pilih —</option>
+                            {MAKER_CONTAINER.map(m=><option key={m} value={m}>{m}</option>)}
+                          </select>
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Maker Container R</label>
+                          <select className="form-input" value={naikForm.turunMakerContainerR} onChange={e=>setNaikForm(f=>({...f,turunMakerContainerR:e.target.value}))}>
+                            <option value="">— Pilih —</option>
+                            {MAKER_CONTAINER.map(m=><option key={m} value={m}>{m}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label className="form-label">Type Container L</label>
+                          <select className="form-input" value={naikForm.turunTypeContainerL} onChange={e=>setNaikForm(f=>({...f,turunTypeContainerL:e.target.value}))}>
+                            <option value="">— Pilih —</option>
+                            {TYPE_CONTAINER.map(t=><option key={t} value={t}>{t}</option>)}
+                          </select>
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Type Container R</label>
+                          <select className="form-input" value={naikForm.turunTypeContainerR} onChange={e=>setNaikForm(f=>({...f,turunTypeContainerR:e.target.value}))}>
+                            <option value="">— Pilih —</option>
+                            {TYPE_CONTAINER.map(t=><option key={t} value={t}>{t}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label className="form-label">No Container L</label>
+                          <input className="form-input" placeholder="cth: C-001L" value={naikForm.turunContainerNoL} onChange={e=>setNaikForm(f=>({...f,turunContainerNoL:e.target.value}))} />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">No Container R</label>
+                          <input className="form-input" placeholder="cth: C-001R" value={naikForm.turunContainerNoR} onChange={e=>setNaikForm(f=>({...f,turunContainerNoR:e.target.value}))} />
+                        </div>
+                      </div>
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label className="form-label">No Mold L</label>
+                          <input className="form-input" placeholder="cth: ML-001" value={naikForm.turunMoldNoL} onChange={e=>setNaikForm(f=>({...f,turunMoldNoL:e.target.value}))} />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">No Mold R</label>
+                          <input className="form-input" placeholder="cth: MR-001" value={naikForm.turunMoldNoR} onChange={e=>setNaikForm(f=>({...f,turunMoldNoR:e.target.value}))} />
+                        </div>
+                      </div>
+                    </>
                   )}
-
-
 
                   {/* PIC */}
                   <AutocompleteInput label="PIC / Operator *" value={naikForm.operator} onChange={v=>setNaikForm(f=>({...f,operator:v}))} suggestions={knownTechs} placeholder="Ketik nama PIC..."/>
@@ -2196,24 +2284,67 @@ export default function App() {
                           </div>
                         </div>
                         {r.machine_code&&<div style={{ fontSize:12,fontWeight:600,color:"#1D9E75",marginBottom:6 }}><i className="ti ti-robot" style={{ fontSize:13,marginRight:4 }}></i>{r.machine_code}</div>}
+                        {(r.press||[]).length>0&&<div style={{ fontSize:11,color:"#666",marginBottom:4 }}>Press: <strong>{r.press.join(" & ")}</strong></div>}
+                        {/* MOLD NAIK info */}
+                        {(r.maker_container_l||r.maker_container_r||r.type_container_l||r.type_container_r)&&(
+                          <div style={{ fontSize:11,color:"#1D9E75",fontWeight:600,marginBottom:2 }}>⬆️ Naik</div>
+                        )}
+                        {(r.maker_container_l||r.maker_container_r)&&(
+                          <div style={{ fontSize:11,color:"#666",marginBottom:2,display:"flex",gap:12,flexWrap:"wrap" }}>
+                            {r.maker_container_l&&<span>Maker L: <strong>{r.maker_container_l}</strong></span>}
+                            {r.maker_container_r&&<span>Maker R: <strong>{r.maker_container_r}</strong></span>}
+                          </div>
+                        )}
+                        {(r.type_container_l||r.type_container_r)&&(
+                          <div style={{ fontSize:11,color:"#666",marginBottom:2,display:"flex",gap:12,flexWrap:"wrap" }}>
+                            {r.type_container_l&&<span>Type L: <strong>{r.type_container_l}</strong></span>}
+                            {r.type_container_r&&<span>Type R: <strong>{r.type_container_r}</strong></span>}
+                          </div>
+                        )}
                         {(r.container_no_l||r.container_no_r)&&(
-                          <div style={{ fontSize:11,color:"#666",marginBottom:4,display:"flex",gap:12,flexWrap:"wrap" }}>
-                            {r.container_no_l&&<span>Container L(↑): <strong>{r.container_no_l}</strong></span>}
-                            {r.container_no_r&&<span>Container R(↑): <strong>{r.container_no_r}</strong></span>}
-                            {r.turun_container_no_l&&<span>Container L(↓): <strong>{r.turun_container_no_l}</strong></span>}
-                            {r.turun_container_no_r&&<span>Container R(↓): <strong>{r.turun_container_no_r}</strong></span>}
+                          <div style={{ fontSize:11,color:"#666",marginBottom:2,display:"flex",gap:12,flexWrap:"wrap" }}>
+                            {r.container_no_l&&<span>No Container L: <strong>{r.container_no_l}</strong></span>}
+                            {r.container_no_r&&<span>No Container R: <strong>{r.container_no_r}</strong></span>}
                           </div>
                         )}
                         {(r.mold_no_l||r.mold_no_r)&&(
                           <div style={{ fontSize:11,color:"#666",marginBottom:4,display:"flex",gap:12,flexWrap:"wrap" }}>
-                            {r.mold_no_l&&<span>Mold L(↑): <strong>{r.mold_no_l}</strong></span>}
-                            {r.mold_no_r&&<span>Mold R(↑): <strong>{r.mold_no_r}</strong></span>}
-                            {r.turun_mold_no_l&&<span>Mold L(↓): <strong>{r.turun_mold_no_l}</strong></span>}
-                            {r.turun_mold_no_r&&<span>Mold R(↓): <strong>{r.turun_mold_no_r}</strong></span>}
+                            {r.mold_no_l&&<span>No Mold L: <strong>{r.mold_no_l}</strong></span>}
+                            {r.mold_no_r&&<span>No Mold R: <strong>{r.mold_no_r}</strong></span>}
                           </div>
                         )}
+                        {/* MOLD TURUN info */}
+                        {r.mold_size_turun&&(
+                          <>
+                            <div style={{ fontSize:11,color:"#E24B4A",fontWeight:600,marginBottom:2,marginTop:4 }}>⬇️ Turun: {r.mold_size_turun}</div>
+                            {(r.turun_maker_container_l||r.turun_maker_container_r)&&(
+                              <div style={{ fontSize:11,color:"#666",marginBottom:2,display:"flex",gap:12,flexWrap:"wrap" }}>
+                                {r.turun_maker_container_l&&<span>Maker L: <strong>{r.turun_maker_container_l}</strong></span>}
+                                {r.turun_maker_container_r&&<span>Maker R: <strong>{r.turun_maker_container_r}</strong></span>}
+                              </div>
+                            )}
+                            {(r.turun_type_container_l||r.turun_type_container_r)&&(
+                              <div style={{ fontSize:11,color:"#666",marginBottom:2,display:"flex",gap:12,flexWrap:"wrap" }}>
+                                {r.turun_type_container_l&&<span>Type L: <strong>{r.turun_type_container_l}</strong></span>}
+                                {r.turun_type_container_r&&<span>Type R: <strong>{r.turun_type_container_r}</strong></span>}
+                              </div>
+                            )}
+                            {(r.turun_container_no_l||r.turun_container_no_r)&&(
+                              <div style={{ fontSize:11,color:"#666",marginBottom:2,display:"flex",gap:12,flexWrap:"wrap" }}>
+                                {r.turun_container_no_l&&<span>No Container L: <strong>{r.turun_container_no_l}</strong></span>}
+                                {r.turun_container_no_r&&<span>No Container R: <strong>{r.turun_container_no_r}</strong></span>}
+                              </div>
+                            )}
+                            {(r.turun_mold_no_l||r.turun_mold_no_r)&&(
+                              <div style={{ fontSize:11,color:"#666",marginBottom:4,display:"flex",gap:12,flexWrap:"wrap" }}>
+                                {r.turun_mold_no_l&&<span>No Mold L: <strong>{r.turun_mold_no_l}</strong></span>}
+                                {r.turun_mold_no_r&&<span>No Mold R: <strong>{r.turun_mold_no_r}</strong></span>}
+                              </div>
+                            )}
+                          </>
+                        )}
                         {r.notes&&<div style={{ fontSize:11,color:"#666",marginBottom:4 }}>📝 {r.notes}</div>}
-                        <div className="record-meta"><i className="ti ti-user" style={{ fontSize:12,marginRight:4 }}></i>{r.operator}</div>
+                        <div className="record-meta"><i className="ti ti-user" style={{ fontSize:12,marginRight:4 }}></i>{r.operator} {r.grup?`· Grup ${r.grup}`:""}</div>
                       </div>
                     ))}
                   </div>
