@@ -26,7 +26,75 @@ const MAKER_CONTAINER = ["Greatoo","Seahwa","Himille","Sumhing","Herbert","AZ Ge
 const TYPE_CONTAINER  = ["S-TYPE","AZIII/2","AZIII","AZIV","L46","L48","AZ V","AW 200"];
 const PRESSES  = ["L","R"];
 
-const ROLES    = ["teknisi","persiapan","qcgate","rakit","naik","analyst","adh","dh","admin"];
+const ROLES    = ["teknisi","persiapan","qcgate","rakit","naik","sh","analyst","adh","dh","admin"];
+
+// Nomor WA per grup — ganti dengan nomor aktual
+const WA_GROUPS = {
+  "a": { persiapan:"6281234560001", qcgate:"6281234560002", rakit:"6281234560003", naik:"6281234560004", sh:"6281234560005" },
+  "b": { persiapan:"6281234560011", qcgate:"6281234560012", rakit:"6281234560013", naik:"6281234560014", sh:"6281234560015" },
+  "c": { persiapan:"6281234560021", qcgate:"6281234560022", rakit:"6281234560023", naik:"6281234560024", sh:"6281234560025" },
+  "d": { persiapan:"6281234560031", qcgate:"6281234560032", rakit:"6281234560033", naik:"6281234560034", sh:"6281234560035" },
+};
+
+// Kirim notif WA — buka tab baru dengan pesan otomatis
+const sendWA = (phone, msg) => {
+  const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+  window.open(url, "_blank");
+};
+
+// Helper notifikasi per tahap
+const notifPersiapan = (grup, moldSize, shift) => {
+  const no = WA_GROUPS[grup]?.persiapan;
+  if (!no) return;
+  sendWA(no, `[MoldTrack] 📦 *PERSIAPAN MOLD*
+Size: *${moldSize}*
+Shift: ${shift}
+Mohon segera lakukan pencarian dan persiapan mold.
+_Pesan otomatis dari sistem MoldTrack_`);
+};
+const notifQCGate1 = (grup, moldSize) => {
+  const no = WA_GROUPS[grup]?.qcgate;
+  if (!no) return;
+  sendWA(no, `[MoldTrack] 🔍 *QC GATE 1*
+Size: *${moldSize}*
+Mold sudah selesai persiapan. Mohon segera lakukan cek visual.
+_Pesan otomatis dari sistem MoldTrack_`);
+};
+const notifRakit = (grup, moldSize) => {
+  const no = WA_GROUPS[grup]?.rakit;
+  if (!no) return;
+  sendWA(no, `[MoldTrack] 🔨 *RAKIT MOLD*
+Size: *${moldSize}*
+Mold lulus QC Gate 1. Mohon segera lakukan perakitan mold.
+_Pesan otomatis dari sistem MoldTrack_`);
+};
+const notifQCGate2 = (grup, moldSize) => {
+  const no = WA_GROUPS[grup]?.qcgate;
+  if (!no) return;
+  sendWA(no, `[MoldTrack] 📐 *QC GATE 2 — KALIBRASI*
+Size: *${moldSize}*
+Mold sudah dirakit. Mohon segera lakukan kalibrasi (MOR/OOR/OF/OS).
+_Pesan otomatis dari sistem MoldTrack_`);
+};
+const notifNaik = (grup, moldSize) => {
+  const no = WA_GROUPS[grup]?.naik;
+  if (!no) return;
+  sendWA(no, `[MoldTrack] ⬆️ *NAIK MOLD*
+Size: *${moldSize}*
+Mold lulus QC Gate 2. Siap dipasang ke mesin curing.
+_Pesan otomatis dari sistem MoldTrack_`);
+};
+const notifSH = (grup, moldSize, tahap, catatan) => {
+  const no = WA_GROUPS[grup]?.sh;
+  if (!no) return;
+  sendWA(no, `[MoldTrack] ⚠️ *INFORMASI SECTION HEAD*
+Size: *${moldSize}*
+Tahap: ${tahap}
+Status: HOLD
+Catatan: ${catatan}
+Mohon koordinasi lebih lanjut.
+_Pesan otomatis dari sistem MoldTrack_`);
+};
 
 // ── EXPORT TO EXCEL ───────────────────────────────────────────────────────────
 const exportToExcel = (records) => {
@@ -134,6 +202,7 @@ const canPersiapan   = (r) => ["persiapan","analyst","adh","dh","admin"].include
 const canQCGate      = (r) => ["qcgate","analyst","adh","dh","admin"].includes(r);
 const canRakit        = (r) => ["rakit","analyst","adh","dh","admin"].includes(r);
 const canNaik        = (r) => ["naik","analyst","adh","dh","admin"].includes(r);
+const canSH          = (r) => ["sh","analyst","adh","dh","admin"].includes(r);
 const canEntry       = (r) => ["teknisi","analyst","adh","dh","admin"].includes(r);
 const canManageUsers = (r) => r === "admin";
 const getGrup = (username) => {
@@ -620,6 +689,10 @@ export default function App() {
   const [filterMonth, setFilterMonth]     = useState(new Date().toISOString().slice(0,7));
   const [entryTab, setEntryTab]           = useState("form");
   const [dbTab, setDbTab]                 = useState("action");
+  const [shTab, setShTab]                 = useState("form");
+  const [shiftPlanRecords, setShiftPlanRecords] = useState([]);
+  const emptyShiftPlan = () => ({ shift:"1", moldSizes:[""], date:new Date().toISOString().slice(0,10), catatan:"" });
+  const [shiftPlan, setShiftPlan]         = useState(emptyShiftPlan());
   const [naikTab, setNaikTab]             = useState("form");
 
   // persiapan state
@@ -661,6 +734,7 @@ export default function App() {
         else if (user.role === "qcgate")    startPage = "qcgate";
         else if (user.role === "naik")      startPage = "naik";
         else if (user.role === "rakit")     startPage = "rakit";
+    else if (user.role === "sh")         startPage = "shplan";
         setPage(startPage);
         setCurrentUser(user);
       }
@@ -675,6 +749,7 @@ export default function App() {
     else if (user.role === "qcgate")    startPage = "qcgate";
     else if (user.role === "naik")      startPage = "naik";
     else if (user.role === "rakit")     startPage = "rakit";
+    else if (user.role === "sh")         startPage = "shplan";
     setPage(startPage);
     setCurrentUser(user);
   };
@@ -708,12 +783,17 @@ export default function App() {
     setNaikRecords(data||[]);
   },[]);
 
+  const loadShiftPlanRecords = useCallback(async () => {
+    const { data } = await supabase.from("shift_plan_records").select("*").order("created_at",{ascending:false});
+    setShiftPlanRecords(data||[]);
+  },[]);
+
   const loadRakitRecords = useCallback(async () => {
     const { data } = await supabase.from("rakit_mold_records").select("*").order("created_at",{ascending:false});
     setRakitRecords(data||[]);
   },[]);
 
-  useEffect(()=>{ if(currentUser){ loadRecords(); loadPrepRecords(); loadQcRecords(); loadNaikRecords(); loadRakitRecords(); } },[loadRecords, loadPrepRecords, loadQcRecords, loadNaikRecords, loadRakitRecords, currentUser]);
+  useEffect(()=>{ if(currentUser){ loadRecords(); loadPrepRecords(); loadQcRecords(); loadNaikRecords(); loadRakitRecords(); loadShiftPlanRecords(); } },[loadRecords, loadPrepRecords, loadQcRecords, loadNaikRecords, loadRakitRecords, loadShiftPlanRecords, currentUser]);
 
   useEffect(()=>{
     if (!currentUser) return;
@@ -722,7 +802,8 @@ export default function App() {
     const ch3 = supabase.channel("qr").on("postgres_changes",{event:"*",schema:"public",table:"qc_records"},()=>loadQcRecords()).subscribe();
     const ch4 = supabase.channel("nr").on("postgres_changes",{event:"*",schema:"public",table:"naik_mold_records"},()=>loadNaikRecords()).subscribe();
     const ch5 = supabase.channel("rkr").on("postgres_changes",{event:"*",schema:"public",table:"rakit_mold_records"},()=>loadRakitRecords()).subscribe();
-    return ()=>{ supabase.removeChannel(ch1); supabase.removeChannel(ch2); supabase.removeChannel(ch3); supabase.removeChannel(ch4); supabase.removeChannel(ch5); };
+    const ch6 = supabase.channel("spr").on("postgres_changes",{event:"*",schema:"public",table:"shift_plan_records"},()=>loadShiftPlanRecords()).subscribe();
+    return ()=>{ supabase.removeChannel(ch1); supabase.removeChannel(ch2); supabase.removeChannel(ch3); supabase.removeChannel(ch4); supabase.removeChannel(ch5); supabase.removeChannel(ch6); };
   },[loadRecords, loadPrepRecords, loadQcRecords, loadNaikRecords, loadRakitRecords, currentUser]);
 
   const submitNaik = async () => {
@@ -761,9 +842,34 @@ export default function App() {
     };
     const { error } = await supabase.from("naik_mold_records").insert(payload);
     if (error) { showToast("Gagal simpan: "+error.message,"error"); return; }
-    showToast("Naik mold berhasil dicatat! ✅");
+    const grup = getGrup(currentUser?.username);
+    notifSH(grup, naikForm.moldSizeNaik, "Naik Mold", `Mold ${naikForm.moldSizeNaik} berhasil dipasang ke mesin ${naikForm.plant}-${naikForm.line}${naikForm.machine}`);
+    showToast("Naik mold berhasil! Notif WA ke Section Head dikirim ✅");
     setNaikForm(emptyNaikForm());
     setNaikTab("database");
+  };
+
+  const submitShiftPlan = async () => {
+    const validSizes = shiftPlan.moldSizes.map(s=>s.trim().toUpperCase()).filter(Boolean);
+    if (!validSizes.length) { showToast("Masukkan minimal 1 size mold.","error"); return; }
+    const grup = getGrup(currentUser?.username);
+    const payload = validSizes.map(size => ({
+      shift:       shiftPlan.shift,
+      mold_size:   size,
+      date:        shiftPlan.date,
+      catatan:     shiftPlan.catatan||null,
+      status:      "pending",
+      flow:        { persiapan:null, qc1:null, rakit:null, qc2:null, naik:null },
+      created_by:  currentUser?.id,
+      grup,
+    }));
+    const { error } = await supabase.from("shift_plan_records").insert(payload);
+    if (error) { showToast("Gagal: "+error.message,"error"); return; }
+    // Notif WA ke tim Persiapan
+    validSizes.forEach(size => notifPersiapan(grup, size, `Shift ${shiftPlan.shift}`));
+    showToast(`${validSizes.length} size mold dijadwalkan! Notif WA dikirim ke tim Persiapan ✅`);
+    setShiftPlan(emptyShiftPlan());
+    setShTab("tracker");
   };
 
   const submitRakit = async () => {
@@ -789,7 +895,16 @@ export default function App() {
     };
     const { error } = await supabase.from("rakit_mold_records").insert(payload);
     if (error) { showToast("Gagal simpan: "+error.message,"error"); return; }
-    showToast("Rakit mold berhasil dicatat! ✅");
+    const grup = getGrup(currentUser?.username);
+    if (rakitForm.hasilRakit === "ok") {
+      notifQCGate2(grup, rakitForm.moldSize);
+      showToast("Rakit selesai! Notif WA ke QC Gate 2 (kalibrasi) dikirim ✅");
+    } else if (rakitForm.hasilRakit === "ditahan") {
+      notifSH(grup, rakitForm.moldSize, "Rakit Mold", rakitForm.catatan||"Branding berbeda / ada masalah");
+      showToast("Rakit HOLD — Notif WA ke Section Head dikirim ⚠️");
+    } else {
+      showToast("Rakit dicatat — Perlu review lebih lanjut ✅");
+    }
     setRakitForm(emptyRakitForm());
     setRakitTab("database");
   };
@@ -929,6 +1044,7 @@ export default function App() {
   // build nav items based on role
   const navItems = [
     ...(canDashboard(role)   ? [["dashboard","ti-layout-dashboard","Dashboard"]] : []),
+    ...(canSH(role)          ? [["shplan","ti-clipboard-list","Shift Plan"]] : []),
     ...(canEntry(role)       ? [["entry","ti-plus","Action Problem"]] : []),
     ...(canDatabase(role)    ? [["database","ti-database","Database"]] : []),
     ...(canPersiapan(role)   ? [["persiapan","ti-package","Persiapan"]] : []),
@@ -940,6 +1056,7 @@ export default function App() {
   // Reset tab ke "form" saat user navigasi ke halaman baru
   const navTo = (p) => {
     setPage(p);
+    if(p==="shplan") setShTab("form");
     if(p==="entry"){ setForm(emptyForm()); setEditId(null); setEntryTab("form"); }
     if(p==="qcgate") setQcMode("entry");
     if(p==="rakit")  setRakitTab("form");
@@ -1003,7 +1120,179 @@ export default function App() {
               <div style={{ marginLeft:8 }}>
                 <div className="topbar-title">
                   {page==="dashboard"&&"Dashboard"}
-                  {page==="entry"&&canEntry(role)&&(editId?"Edit Record":"Action Problem")}
+                  {page==="shplan"&&"Shift Plan"}
+                  {/* SHIFT PLAN — Section Head */}
+            {page==="shplan"&&canSH(role)&&(
+              <div>
+                {/* TAB */}
+                <div style={{ display:"flex",gap:8,marginBottom:16 }}>
+                  {[["form","📋 Input Shift"],["tracker","📊 Tracker"]].map(([id,lbl])=>(
+                    <button key={id} onClick={()=>setShTab(id)}
+                      style={{ flex:1,padding:"10px",borderRadius:8,border:"1.5px solid",cursor:"pointer",fontSize:13,fontWeight:600,
+                        borderColor:shTab===id?"#1D9E75":"#e0e0e0",
+                        background:shTab===id?"#1D9E75":"#fff",
+                        color:shTab===id?"#fff":"#666" }}>
+                      {lbl}
+                    </button>
+                  ))}
+                </div>
+
+                {/* FORM INPUT SHIFT */}
+                {shTab==="form"&&(
+                  <div>
+                    <div className="card-title" style={{ textAlign:"center",fontSize:16,marginBottom:16 }}>📋 Input Shift Plan</div>
+
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label className="form-label">Tanggal *</label>
+                        <input type="date" className="form-input" value={shiftPlan.date} onChange={e=>setShiftPlan(f=>({...f,date:e.target.value}))} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Shift *</label>
+                        <select className="form-input" value={shiftPlan.shift} onChange={e=>setShiftPlan(f=>({...f,shift:e.target.value}))}>
+                          <option value="1">Shift 1</option>
+                          <option value="2">Shift 2</option>
+                          <option value="3">Shift 3</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Size mold list — bisa tambah multiple */}
+                    <div className="form-group">
+                      <label className="form-label">Size Mold yang akan Naik *</label>
+                      {shiftPlan.moldSizes.map((size,idx)=>(
+                        <div key={idx} style={{ display:"flex",gap:8,marginBottom:8 }}>
+                          <input className="form-input" style={{ flex:1,margin:0 }}
+                            placeholder={`cth: BX551`}
+                            value={size}
+                            onChange={e=>{
+                              const arr=[...shiftPlan.moldSizes];
+                              arr[idx]=e.target.value;
+                              setShiftPlan(f=>({...f,moldSizes:arr}));
+                            }}
+                          />
+                          {shiftPlan.moldSizes.length>1&&(
+                            <button onClick={()=>setShiftPlan(f=>({...f,moldSizes:f.moldSizes.filter((_,i)=>i!==idx)}))}
+                              style={{ padding:"0 12px",borderRadius:8,border:"1.5px solid #E24B4A",background:"#FCEBEB",color:"#E24B4A",cursor:"pointer",fontSize:16,flexShrink:0 }}>✕</button>
+                          )}
+                        </div>
+                      ))}
+                      <button onClick={()=>setShiftPlan(f=>({...f,moldSizes:[...f.moldSizes,""]}))}
+                        style={{ width:"100%",padding:"8px",borderRadius:8,border:"1.5px dashed #1D9E75",background:"#E1F5EE",color:"#1D9E75",cursor:"pointer",fontSize:12,fontWeight:600,marginTop:4 }}>
+                        + Tambah Size
+                      </button>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Catatan</label>
+                      <textarea className="form-input" rows={2} placeholder="Catatan shift..." value={shiftPlan.catatan} onChange={e=>setShiftPlan(f=>({...f,catatan:e.target.value}))} style={{ resize:"vertical" }}/>
+                    </div>
+
+                    {/* Preview */}
+                    {shiftPlan.moldSizes.filter(Boolean).length>0&&(
+                      <div style={{ background:"#E1F5EE",borderRadius:8,padding:"12px 14px",marginBottom:14 }}>
+                        <div style={{ fontSize:11,color:"#085041",fontWeight:600,marginBottom:8 }}>📋 Preview — {shiftPlan.moldSizes.filter(Boolean).length} size akan dijadwalkan:</div>
+                        {shiftPlan.moldSizes.filter(Boolean).map((s,i)=>(
+                          <div key={i} style={{ display:"flex",alignItems:"center",gap:8,marginBottom:4 }}>
+                            <span style={{ width:6,height:6,borderRadius:"50%",background:"#1D9E75",flexShrink:0,display:"inline-block" }}></span>
+                            <span style={{ fontSize:13,fontWeight:600,color:"#085041" }}>{s.toUpperCase()}</span>
+                          </div>
+                        ))}
+                        <div style={{ marginTop:8,fontSize:11,color:"#666" }}>📱 Notif WA otomatis → Tim Persiapan Grup {getGrup(currentUser?.username)?.toUpperCase()}</div>
+                      </div>
+                    )}
+
+                    <button className="btn-primary" onClick={submitShiftPlan}>
+                      📋 Submit Shift Plan + Kirim Notif WA
+                    </button>
+                  </div>
+                )}
+
+                {/* TRACKER */}
+                {shTab==="tracker"&&(
+                  <div>
+                    <div style={{ fontSize:13,fontWeight:600,color:"#111",marginBottom:12 }}>
+                      📊 Progress Tracker — {new Date().toLocaleDateString("id-ID",{dateStyle:"long"})}
+                    </div>
+                    {shiftPlanRecords.length===0&&(
+                      <div className="card" style={{ textAlign:"center",color:"#999",fontSize:13,padding:24 }}>
+                        Belum ada shift plan hari ini.
+                      </div>
+                    )}
+                    {shiftPlanRecords.map(plan=>{
+                      const STEPS = [
+                        { id:"persiapan", label:"Persiapan",  icon:"📦" },
+                        { id:"qc1",       label:"QC Gate 1",  icon:"🔍" },
+                        { id:"rakit",     label:"Rakit Mold", icon:"🔨" },
+                        { id:"qc2",       label:"QC Gate 2",  icon:"📐" },
+                        { id:"naik",      label:"Naik Mold",  icon:"⬆️" },
+                      ];
+                      const flow = plan.flow || {};
+                      // Hitung progress dari data records
+                      const hasPersiapan = prepRecords.some(r=>r.mold_size===plan.mold_size&&r.date===plan.date);
+                      const hasQC1       = qcRecords.some(r=>r.mold_size===plan.mold_size&&r.date===plan.date);
+                      const hasRakit     = rakitRecords.some(r=>r.mold_size===plan.mold_size&&r.date===plan.date);
+                      const hasNaik      = naikRecords.some(r=>r.mold_size_naik===plan.mold_size&&r.date===plan.date);
+                      const progress = { persiapan:hasPersiapan, qc1:hasQC1, rakit:hasRakit, qc2:hasRakit, naik:hasNaik };
+                      const doneCount = Object.values(progress).filter(Boolean).length;
+
+                      return(
+                        <div key={plan.id} className="card" style={{ marginBottom:12 }}>
+                          {/* Header */}
+                          <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12 }}>
+                            <div>
+                              <div style={{ fontSize:18,fontWeight:700,color:"#111" }}>{plan.mold_size}</div>
+                              <div style={{ fontSize:11,color:"#999" }}>Shift {plan.shift} · {plan.date} · Grup {plan.grup?.toUpperCase()}</div>
+                            </div>
+                            <div style={{ textAlign:"right" }}>
+                              <div style={{ fontSize:11,fontWeight:600,color:doneCount===5?"#1D9E75":"#E8A020" }}>
+                                {doneCount===5?"✅ Selesai":`${doneCount}/5 tahap`}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Progress bar */}
+                          <div style={{ position:"relative",marginBottom:16 }}>
+                            {/* Garis */}
+                            <div style={{ position:"absolute",top:14,left:"10%",right:"10%",height:3,background:"#e0e0e0",borderRadius:2,zIndex:0 }}></div>
+                            <div style={{ position:"absolute",top:14,left:"10%",height:3,background:"#1D9E75",borderRadius:2,zIndex:1,
+                              width:`${Math.max(0,(doneCount/5)*80)}%`,transition:"width 0.5s" }}></div>
+                            {/* Dots */}
+                            <div style={{ display:"flex",justifyContent:"space-between",position:"relative",zIndex:2 }}>
+                              {STEPS.map((step,i)=>{
+                                const done = progress[step.id];
+                                const active = !done && (i===0 || progress[STEPS[i-1]?.id]);
+                                return(
+                                  <div key={step.id} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:4,flex:1 }}>
+                                    <div style={{ width:28,height:28,borderRadius:"50%",
+                                      background:done?"#1D9E75":active?"#E8A020":"#e0e0e0",
+                                      display:"flex",alignItems:"center",justifyContent:"center",
+                                      fontSize:14,border:`2px solid ${done?"#1D9E75":active?"#E8A020":"#ccc"}`,
+                                      boxShadow:active?"0 0 0 3px #FEF3C7":"none" }}>
+                                      {done?"✓":step.icon}
+                                    </div>
+                                    <div style={{ fontSize:9,color:done?"#1D9E75":active?"#E8A020":"#999",fontWeight:done||active?600:400,textAlign:"center",lineHeight:1.2 }}>
+                                      {step.label}
+                                    </div>
+                                    <div style={{ fontSize:9,color:done?"#1D9E75":"#ccc",fontWeight:600 }}>
+                                      {done?"DONE":active?"NOW":""}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {plan.catatan&&<div style={{ fontSize:11,color:"#666",marginTop:4 }}>📝 {plan.catatan}</div>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {page==="entry"&&canEntry(role)&&(editId?"Edit Record":"Action Problem")}
                   {page==="database"&&"Database Record"}
                   {page==="detail"&&"Detail Record"}
                   {page==="users"&&"Kelola User"}
@@ -1141,6 +1430,41 @@ export default function App() {
                           </div>
                         ))}
                       </div>
+
+                      {/* TRACKER HARI INI */}
+                      {(()=>{
+                        const todayPlans = shiftPlanRecords.filter(p=>p.date===todayStr);
+                        if (!todayPlans.length) return null;
+                        return(
+                          <div className="card" style={{ marginBottom:16 }}>
+                            <div className="card-title">🚦 Progress Mold Hari Ini ({todayStr})</div>
+                            {todayPlans.map(plan=>{
+                              const hasP = prepRecords.some(r=>r.mold_size===plan.mold_size&&r.date===plan.date);
+                              const hasQ = qcRecords.some(r=>r.mold_size===plan.mold_size&&r.date===plan.date);
+                              const hasR = rakitRecords.some(r=>r.mold_size===plan.mold_size&&r.date===plan.date);
+                              const hasN = naikRecords.some(r=>r.mold_size_naik===plan.mold_size&&r.date===plan.date);
+                              const steps = [{l:"Persiapan",d:hasP},{l:"QC 1",d:hasQ},{l:"Rakit",d:hasR},{l:"QC 2",d:hasR},{l:"Naik",d:hasN}];
+                              const done = steps.filter(s=>s.d).length;
+                              return(
+                                <div key={plan.id} style={{ marginBottom:12,paddingBottom:12,borderBottom:"1px solid #f0f0f0" }}>
+                                  <div style={{ display:"flex",justifyContent:"space-between",marginBottom:8 }}>
+                                    <div style={{ fontWeight:700,fontSize:14,color:"#111" }}>{plan.mold_size}</div>
+                                    <div style={{ fontSize:11,color:"#999" }}>Shift {plan.shift} · Grup {plan.grup?.toUpperCase()} · {done}/5</div>
+                                  </div>
+                                  <div style={{ display:"flex",gap:4 }}>
+                                    {steps.map((s,i)=>(
+                                      <div key={i} style={{ flex:1,textAlign:"center" }}>
+                                        <div style={{ height:6,borderRadius:3,background:s.d?"#1D9E75":"#e0e0e0",marginBottom:3 }}></div>
+                                        <div style={{ fontSize:9,color:s.d?"#1D9E75":"#999" }}>{s.l}</div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
 
                       {/* TREN 7 HARI */}
                       <div className="card" style={{ marginBottom:16 }}>
@@ -1310,6 +1634,177 @@ export default function App() {
             )}
 
             {/* ENTRY FORM */}
+            {/* SHIFT PLAN — Section Head */}
+            {page==="shplan"&&canSH(role)&&(
+              <div>
+                {/* TAB */}
+                <div style={{ display:"flex",gap:8,marginBottom:16 }}>
+                  {[["form","📋 Input Shift"],["tracker","📊 Tracker"]].map(([id,lbl])=>(
+                    <button key={id} onClick={()=>setShTab(id)}
+                      style={{ flex:1,padding:"10px",borderRadius:8,border:"1.5px solid",cursor:"pointer",fontSize:13,fontWeight:600,
+                        borderColor:shTab===id?"#1D9E75":"#e0e0e0",
+                        background:shTab===id?"#1D9E75":"#fff",
+                        color:shTab===id?"#fff":"#666" }}>
+                      {lbl}
+                    </button>
+                  ))}
+                </div>
+
+                {/* FORM INPUT SHIFT */}
+                {shTab==="form"&&(
+                  <div>
+                    <div className="card-title" style={{ textAlign:"center",fontSize:16,marginBottom:16 }}>📋 Input Shift Plan</div>
+
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label className="form-label">Tanggal *</label>
+                        <input type="date" className="form-input" value={shiftPlan.date} onChange={e=>setShiftPlan(f=>({...f,date:e.target.value}))} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Shift *</label>
+                        <select className="form-input" value={shiftPlan.shift} onChange={e=>setShiftPlan(f=>({...f,shift:e.target.value}))}>
+                          <option value="1">Shift 1</option>
+                          <option value="2">Shift 2</option>
+                          <option value="3">Shift 3</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Size mold list — bisa tambah multiple */}
+                    <div className="form-group">
+                      <label className="form-label">Size Mold yang akan Naik *</label>
+                      {shiftPlan.moldSizes.map((size,idx)=>(
+                        <div key={idx} style={{ display:"flex",gap:8,marginBottom:8 }}>
+                          <input className="form-input" style={{ flex:1,margin:0 }}
+                            placeholder={`cth: BX551`}
+                            value={size}
+                            onChange={e=>{
+                              const arr=[...shiftPlan.moldSizes];
+                              arr[idx]=e.target.value;
+                              setShiftPlan(f=>({...f,moldSizes:arr}));
+                            }}
+                          />
+                          {shiftPlan.moldSizes.length>1&&(
+                            <button onClick={()=>setShiftPlan(f=>({...f,moldSizes:f.moldSizes.filter((_,i)=>i!==idx)}))}
+                              style={{ padding:"0 12px",borderRadius:8,border:"1.5px solid #E24B4A",background:"#FCEBEB",color:"#E24B4A",cursor:"pointer",fontSize:16,flexShrink:0 }}>✕</button>
+                          )}
+                        </div>
+                      ))}
+                      <button onClick={()=>setShiftPlan(f=>({...f,moldSizes:[...f.moldSizes,""]}))}
+                        style={{ width:"100%",padding:"8px",borderRadius:8,border:"1.5px dashed #1D9E75",background:"#E1F5EE",color:"#1D9E75",cursor:"pointer",fontSize:12,fontWeight:600,marginTop:4 }}>
+                        + Tambah Size
+                      </button>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Catatan</label>
+                      <textarea className="form-input" rows={2} placeholder="Catatan shift..." value={shiftPlan.catatan} onChange={e=>setShiftPlan(f=>({...f,catatan:e.target.value}))} style={{ resize:"vertical" }}/>
+                    </div>
+
+                    {/* Preview */}
+                    {shiftPlan.moldSizes.filter(Boolean).length>0&&(
+                      <div style={{ background:"#E1F5EE",borderRadius:8,padding:"12px 14px",marginBottom:14 }}>
+                        <div style={{ fontSize:11,color:"#085041",fontWeight:600,marginBottom:8 }}>📋 Preview — {shiftPlan.moldSizes.filter(Boolean).length} size akan dijadwalkan:</div>
+                        {shiftPlan.moldSizes.filter(Boolean).map((s,i)=>(
+                          <div key={i} style={{ display:"flex",alignItems:"center",gap:8,marginBottom:4 }}>
+                            <span style={{ width:6,height:6,borderRadius:"50%",background:"#1D9E75",flexShrink:0,display:"inline-block" }}></span>
+                            <span style={{ fontSize:13,fontWeight:600,color:"#085041" }}>{s.toUpperCase()}</span>
+                          </div>
+                        ))}
+                        <div style={{ marginTop:8,fontSize:11,color:"#666" }}>📱 Notif WA otomatis → Tim Persiapan Grup {getGrup(currentUser?.username)?.toUpperCase()}</div>
+                      </div>
+                    )}
+
+                    <button className="btn-primary" onClick={submitShiftPlan}>
+                      📋 Submit Shift Plan + Kirim Notif WA
+                    </button>
+                  </div>
+                )}
+
+                {/* TRACKER */}
+                {shTab==="tracker"&&(
+                  <div>
+                    <div style={{ fontSize:13,fontWeight:600,color:"#111",marginBottom:12 }}>
+                      📊 Progress Tracker — {new Date().toLocaleDateString("id-ID",{dateStyle:"long"})}
+                    </div>
+                    {shiftPlanRecords.length===0&&(
+                      <div className="card" style={{ textAlign:"center",color:"#999",fontSize:13,padding:24 }}>
+                        Belum ada shift plan hari ini.
+                      </div>
+                    )}
+                    {shiftPlanRecords.map(plan=>{
+                      const STEPS = [
+                        { id:"persiapan", label:"Persiapan",  icon:"📦" },
+                        { id:"qc1",       label:"QC Gate 1",  icon:"🔍" },
+                        { id:"rakit",     label:"Rakit Mold", icon:"🔨" },
+                        { id:"qc2",       label:"QC Gate 2",  icon:"📐" },
+                        { id:"naik",      label:"Naik Mold",  icon:"⬆️" },
+                      ];
+                      const flow = plan.flow || {};
+                      // Hitung progress dari data records
+                      const hasPersiapan = prepRecords.some(r=>r.mold_size===plan.mold_size&&r.date===plan.date);
+                      const hasQC1       = qcRecords.some(r=>r.mold_size===plan.mold_size&&r.date===plan.date);
+                      const hasRakit     = rakitRecords.some(r=>r.mold_size===plan.mold_size&&r.date===plan.date);
+                      const hasNaik      = naikRecords.some(r=>r.mold_size_naik===plan.mold_size&&r.date===plan.date);
+                      const progress = { persiapan:hasPersiapan, qc1:hasQC1, rakit:hasRakit, qc2:hasRakit, naik:hasNaik };
+                      const doneCount = Object.values(progress).filter(Boolean).length;
+
+                      return(
+                        <div key={plan.id} className="card" style={{ marginBottom:12 }}>
+                          {/* Header */}
+                          <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12 }}>
+                            <div>
+                              <div style={{ fontSize:18,fontWeight:700,color:"#111" }}>{plan.mold_size}</div>
+                              <div style={{ fontSize:11,color:"#999" }}>Shift {plan.shift} · {plan.date} · Grup {plan.grup?.toUpperCase()}</div>
+                            </div>
+                            <div style={{ textAlign:"right" }}>
+                              <div style={{ fontSize:11,fontWeight:600,color:doneCount===5?"#1D9E75":"#E8A020" }}>
+                                {doneCount===5?"✅ Selesai":`${doneCount}/5 tahap`}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Progress bar */}
+                          <div style={{ position:"relative",marginBottom:16 }}>
+                            {/* Garis */}
+                            <div style={{ position:"absolute",top:14,left:"10%",right:"10%",height:3,background:"#e0e0e0",borderRadius:2,zIndex:0 }}></div>
+                            <div style={{ position:"absolute",top:14,left:"10%",height:3,background:"#1D9E75",borderRadius:2,zIndex:1,
+                              width:`${Math.max(0,(doneCount/5)*80)}%`,transition:"width 0.5s" }}></div>
+                            {/* Dots */}
+                            <div style={{ display:"flex",justifyContent:"space-between",position:"relative",zIndex:2 }}>
+                              {STEPS.map((step,i)=>{
+                                const done = progress[step.id];
+                                const active = !done && (i===0 || progress[STEPS[i-1]?.id]);
+                                return(
+                                  <div key={step.id} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:4,flex:1 }}>
+                                    <div style={{ width:28,height:28,borderRadius:"50%",
+                                      background:done?"#1D9E75":active?"#E8A020":"#e0e0e0",
+                                      display:"flex",alignItems:"center",justifyContent:"center",
+                                      fontSize:14,border:`2px solid ${done?"#1D9E75":active?"#E8A020":"#ccc"}`,
+                                      boxShadow:active?"0 0 0 3px #FEF3C7":"none" }}>
+                                      {done?"✓":step.icon}
+                                    </div>
+                                    <div style={{ fontSize:9,color:done?"#1D9E75":active?"#E8A020":"#999",fontWeight:done||active?600:400,textAlign:"center",lineHeight:1.2 }}>
+                                      {step.label}
+                                    </div>
+                                    <div style={{ fontSize:9,color:done?"#1D9E75":"#ccc",fontWeight:600 }}>
+                                      {done?"DONE":active?"NOW":""}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {plan.catatan&&<div style={{ fontSize:11,color:"#666",marginTop:4 }}>📝 {plan.catatan}</div>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
             {page==="entry"&&canEntry(role)&&(
               <div>
                 {/* TAB NAVIGATION */}
@@ -1535,6 +2030,7 @@ export default function App() {
                     ["qc","🔍 QC Gate", qcRecords.length],
                     ["rakit","🔨 Rakit Mold", rakitRecords.length],
                     ["naik","⬆️ Naik Mold", naikRecords.length],
+                    ["tracker","🚦 Shift Tracker", shiftPlanRecords.length],
                   ].map(([id,lbl,cnt])=>(
                     <button key={id} onClick={()=>setDbTab(id)}
                       style={{ flexShrink:0,padding:"8px 14px",borderRadius:8,border:"1.5px solid",cursor:"pointer",fontSize:12,fontWeight:600,
@@ -1686,6 +2182,52 @@ export default function App() {
                     </div>
                   );
                 })()}
+
+                {/* TAB: SHIFT TRACKER */}
+                {dbTab==="tracker"&&(
+                  <div>
+                    <div style={{ fontSize:12,color:"#999",marginBottom:12 }}>{shiftPlanRecords.length} shift plan tercatat</div>
+                    {shiftPlanRecords.length===0&&<div className="card" style={{ textAlign:"center",color:"#999",fontSize:13,padding:24 }}>Belum ada data shift plan.</div>}
+                    {shiftPlanRecords.map(plan=>{
+                      const hasP = prepRecords.some(r=>r.mold_size===plan.mold_size&&r.date===plan.date);
+                      const hasQ = qcRecords.some(r=>r.mold_size===plan.mold_size&&r.date===plan.date);
+                      const hasR = rakitRecords.some(r=>r.mold_size===plan.mold_size&&r.date===plan.date);
+                      const hasN = naikRecords.some(r=>r.mold_size_naik===plan.mold_size&&r.date===plan.date);
+                      const steps = [
+                        {l:"Persiapan",d:hasP,icon:"📦"},
+                        {l:"QC Gate 1",d:hasQ,icon:"🔍"},
+                        {l:"Rakit",d:hasR,icon:"🔨"},
+                        {l:"QC Gate 2",d:hasR,icon:"📐"},
+                        {l:"Naik Mold",d:hasN,icon:"⬆️"},
+                      ];
+                      const done = steps.filter(s=>s.d).length;
+                      return(
+                        <div key={plan.id} className="card" style={{ marginBottom:12 }}>
+                          <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10 }}>
+                            <div>
+                              <div style={{ fontSize:16,fontWeight:700,color:"#111" }}>{plan.mold_size}</div>
+                              <div style={{ fontSize:11,color:"#999" }}>Shift {plan.shift} · {plan.date} · Grup {plan.grup?.toUpperCase()}</div>
+                            </div>
+                            <span style={{ fontSize:11,padding:"3px 10px",borderRadius:20,fontWeight:600,
+                              background:done===5?"#E1F5EE":done>0?"#FEF3C7":"#f0f0f0",
+                              color:done===5?"#085041":done>0?"#92400E":"#999" }}>
+                              {done===5?"✅ Selesai":done>0?`⏳ ${done}/5`:"🔴 Belum mulai"}
+                            </span>
+                          </div>
+                          <div style={{ display:"flex",gap:4,marginBottom:8 }}>
+                            {steps.map((s,i)=>(
+                              <div key={i} style={{ flex:1,textAlign:"center" }}>
+                                <div style={{ height:6,borderRadius:3,background:s.d?"#1D9E75":"#e0e0e0",marginBottom:3,transition:"background 0.3s" }}></div>
+                                <div style={{ fontSize:9,color:s.d?"#1D9E75":"#999",fontWeight:s.d?600:400 }}>{s.l}</div>
+                              </div>
+                            ))}
+                          </div>
+                          {plan.catatan&&<div style={{ fontSize:11,color:"#666" }}>📝 {plan.catatan}</div>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
 
                 {/* TAB: NAIK MOLD */}
                 {dbTab==="naik"&&(
