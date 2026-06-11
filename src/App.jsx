@@ -49,54 +49,32 @@ const sendWA = (phone, msg) => {
 const notifPersiapan = (grup, moldSize, shift) => {
   const no = WA_GROUPS[grup]?.persiapan;
   if (!no) return;
-  sendWA(no, `[MoldTrack] 📦 *PERSIAPAN MOLD*
-Size: *${moldSize}*
-Shift: ${shift}
-Mohon segera lakukan pencarian dan persiapan mold.
-_Pesan otomatis dari sistem MoldTrack_`);
+  sendWA(no, "[MoldTrack] PERSIAPAN MOLD - Size: "+moldSize+" - Shift: "+shift+" - Mohon segera persiapan mold.");
 };
 const notifQCGate1 = (grup, moldSize) => {
   const no = WA_GROUPS[grup]?.qcgate;
   if (!no) return;
-  sendWA(no, `[MoldTrack] 🔍 *QC GATE 1*
-Size: *${moldSize}*
-Mold sudah selesai persiapan. Mohon segera lakukan cek visual.
-_Pesan otomatis dari sistem MoldTrack_`);
+  sendWA(no, "[MoldTrack] QC GATE 1 - Size: "+moldSize+" - Mold selesai persiapan. Mohon cek visual.");
 };
 const notifRakit = (grup, moldSize) => {
   const no = WA_GROUPS[grup]?.rakit;
   if (!no) return;
-  sendWA(no, `[MoldTrack] 🔨 *RAKIT MOLD*
-Size: *${moldSize}*
-Mold lulus QC Gate 1. Mohon segera lakukan perakitan mold.
-_Pesan otomatis dari sistem MoldTrack_`);
+  sendWA(no, "[MoldTrack] RAKIT MOLD - Size: "+moldSize+" - Lulus QC Gate 1. Mohon segera rakit mold.");
 };
 const notifQCGate2 = (grup, moldSize) => {
   const no = WA_GROUPS[grup]?.qcgate;
   if (!no) return;
-  sendWA(no, `[MoldTrack] 📐 *QC GATE 2 — KALIBRASI*
-Size: *${moldSize}*
-Mold sudah dirakit. Mohon segera lakukan kalibrasi (MOR/OOR/OF/OS).
-_Pesan otomatis dari sistem MoldTrack_`);
+  sendWA(no, "[MoldTrack] QC GATE 2 KALIBRASI - Size: "+moldSize+" - Mold sudah dirakit. Mohon kalibrasi (MOR/OOR/OF/OS).");
 };
 const notifNaik = (grup, moldSize) => {
   const no = WA_GROUPS[grup]?.naik;
   if (!no) return;
-  sendWA(no, `[MoldTrack] ⬆️ *NAIK MOLD*
-Size: *${moldSize}*
-Mold lulus QC Gate 2. Siap dipasang ke mesin curing.
-_Pesan otomatis dari sistem MoldTrack_`);
+  sendWA(no, "[MoldTrack] NAIK MOLD - Size: "+moldSize+" - Lulus QC Gate 2. Siap dipasang ke mesin curing.");
 };
 const notifSH = (grup, moldSize, tahap, catatan) => {
   const no = WA_GROUPS[grup]?.sh;
   if (!no) return;
-  sendWA(no, `[MoldTrack] ⚠️ *INFORMASI SECTION HEAD*
-Size: *${moldSize}*
-Tahap: ${tahap}
-Status: HOLD
-Catatan: ${catatan}
-Mohon koordinasi lebih lanjut.
-_Pesan otomatis dari sistem MoldTrack_`);
+  sendWA(no, "[MoldTrack] INFO SECTION HEAD - Size: "+moldSize+" - Tahap: "+tahap+" - HOLD - "+catatan);
 };
 
 // ── EXPORT TO EXCEL ───────────────────────────────────────────────────────────
