@@ -1103,7 +1103,29 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
                 <div className="topbar-title">
                   {page==="dashboard"&&"Dashboard"}
                   {page==="shplan"&&"Shift Plan"}
-                  &(
+                  {page==="entry"&&canEntry(role)&&(editId?"Edit Record":"Action Problem")}
+                  {page==="database"&&"Database Record"}
+                  {page==="detail"&&"Detail Record"}
+                  {page==="users"&&"Kelola User"}
+                  {page==="persiapan"&&"Persiapan Mold"}
+                  {page==="qcgate"&&"QC Gate"}
+                  {page==="rakit"&&"Rakit Mold"}
+                  {page==="naik"&&"Naik Mold"}
+                </div>
+                <div className="topbar-sub">{currentUser.full_name} · <RoleBadge role={role} /></div>
+              </div>
+            </div>
+            <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+              <button className="btn-sm" onClick={()=>{loadRecords();loadPrepRecords();loadQcRecords();loadNaikRecords();loadRakitRecords();}} style={{ fontSize:11 }}>↻ Refresh</button>
+              <button className="btn-sm" onClick={handleLogout} style={{ color:"#E24B4A",borderColor:"#E24B4A",fontSize:11 }}>Keluar</button>
+            </div>
+          </div>
+
+          <div className="content">
+
+            {/* SHIFT PLAN — Section Head */}
+            {page==="shplan"&&canSH(role)&&(
+              <div>
               <div>
                 {/* TAB */}
                 <div style={{ display:"flex",gap:8,marginBottom:16 }}>
@@ -1338,27 +1360,8 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
                   );
                 })()}
               </div>
-            )}
-
-            {page==="entry"&&canEntry(role)&&(editId?"Edit Record":"Action Problem")}
-                  {page==="database"&&"Database Record"}
-                  {page==="detail"&&"Detail Record"}
-                  {page==="users"&&"Kelola User"}
-                  {page==="persiapan"&&"Persiapan Mold"}
-                  {page==="qcgate"&&"QC Gate"}
-                  {page==="rakit"&&"Rakit Mold"}
-                  {page==="naik"&&"Naik Mold"}
-                </div>
-                <div className="topbar-sub">{currentUser.full_name} · <RoleBadge role={role} /></div>
               </div>
-            </div>
-            <div style={{ display:"flex",alignItems:"center",gap:8 }}>
-              <button className="btn-sm" onClick={()=>{loadRecords();loadPrepRecords();loadQcRecords();loadNaikRecords();loadRakitRecords();}} style={{ fontSize:11 }}>↻ Refresh</button>
-              <button className="btn-sm" onClick={handleLogout} style={{ color:"#E24B4A",borderColor:"#E24B4A",fontSize:11 }}>Keluar</button>
-            </div>
-          </div>
-
-          <div className="content">
+            )}
 
             {/* DASHBOARD */}
             {page==="dashboard"&&canDashboard(role)&&(
