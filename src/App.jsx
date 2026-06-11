@@ -1321,7 +1321,7 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
                                                     {/* Tombol WA manual per tahap */}
                           {(()=>{
                             const waUrl = (phone, msg) => "https://wa.me/"+(phone||"")+"?text="+encodeURIComponent(msg);
-                            const btnStyle = (bg,color,border) => ({ fontSize:11,padding:"4px 10px",borderRadius:6,background:bg,color,border:"1px solid "+border,textDecoration:"none",fontWeight:600 });
+                            const btnStyle = (bg,clr,bdr) => ({ fontSize:11,padding:"4px 10px",borderRadius:6,background:bg,color:clr,border:"1px solid "+bdr,textDecoration:"none",fontWeight:600 });
                             return(
                               <div style={{ marginTop:8,display:"flex",gap:6,flexWrap:"wrap" }}>
                                 {!hasPersiapan&&<a href={waUrl(WA_GROUPS[plan.grup]?.persiapan,"[MoldTrack] PERSIAPAN MOLD - Size: "+plan.mold_size+" - Shift: "+plan.shift+" - Mohon segera persiapan mold.")} target="_blank" rel="noopener noreferrer" style={btnStyle("#E1F5EE","#085041","#1D9E75")}>📱 WA Persiapan</a>}
