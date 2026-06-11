@@ -1331,7 +1331,6 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
                               </div>
                             );
                           })()}
-                          </div>
                         </div>
                       );
                     })}
