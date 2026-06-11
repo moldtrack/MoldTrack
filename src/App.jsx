@@ -1288,8 +1288,8 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
                           <div style={{ position:"relative",marginBottom:16 }}>
                             {/* Garis */}
                             <div style={{ position:"absolute",top:14,left:"10%",right:"10%",height:3,background:"#e0e0e0",borderRadius:2,zIndex:0 }}></div>
-                            <div style={{ position:"absolute",top:14,left:"10%",height:3,background:"#1D9E75",borderRadius:2,zIndex:1,
-                              width:`${Math.max(0,(doneCount/5)*80)}%`,transition:"width 0.5s",background:STEPS.some(s=>getStatus(s.id)==="hold")?"#E24B4A":"#1D9E75" }}></div>
+                            <div style={{ position:"absolute",top:14,left:"10%",height:3,background:STEPS.some(s=>getStatus(s.id)==="hold")?"#E24B4A":"#1D9E75",borderRadius:2,zIndex:1,
+                              width:`${Math.max(0,(doneCount/5)*80)}%`,transition:"width 0.5s" }}></div>
                             {/* Dots */}
                             <div style={{ display:"flex",justifyContent:"space-between",position:"relative",zIndex:2 }}>
                               {STEPS.map((step)=>{
@@ -1868,8 +1868,8 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
                           <div style={{ position:"relative",marginBottom:16 }}>
                             {/* Garis */}
                             <div style={{ position:"absolute",top:14,left:"10%",right:"10%",height:3,background:"#e0e0e0",borderRadius:2,zIndex:0 }}></div>
-                            <div style={{ position:"absolute",top:14,left:"10%",height:3,background:"#1D9E75",borderRadius:2,zIndex:1,
-                              width:`${Math.max(0,(doneCount/5)*80)}%`,transition:"width 0.5s",background:STEPS.some(s=>getStatus(s.id)==="hold")?"#E24B4A":"#1D9E75" }}></div>
+                            <div style={{ position:"absolute",top:14,left:"10%",height:3,background:STEPS.some(s=>getStatus(s.id)==="hold")?"#E24B4A":"#1D9E75",borderRadius:2,zIndex:1,
+                              width:`${Math.max(0,(doneCount/5)*80)}%`,transition:"width 0.5s" }}></div>
                             {/* Dots */}
                             <div style={{ display:"flex",justifyContent:"space-between",position:"relative",zIndex:2 }}>
                               {STEPS.map((step)=>{
@@ -1902,7 +1902,8 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
                       );
                     })}
                   </div>
-                )}
+                  );
+                })()}
               </div>
             )}
 
