@@ -1340,25 +1340,19 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
                           </div>
 
                           {plan.catatan&&<div style={{ fontSize:11,color:"#666",marginTop:4 }}>📝 {plan.catatan}</div>}
-                          {/* Tombol WA manual per tahap */}
-                          <div style={{ marginTop:8,display:"flex",gap:6,flexWrap:"wrap" }}>
-                            {!hasPersiapan&&<a href={`https://wa.me/${WA_GROUPS[plan.grup]?.persiapan||""}?text=${encodeURIComponent("[MoldTrack] 📦 PERSIAPAN MOLD
-Size: "+plan.mold_size+"
-Shift: "+plan.shift+"
-Mohon segera persiapan mold.")}`} target="_blank" rel="noopener noreferrer"
-                              style={{ fontSize:11,padding:"4px 10px",borderRadius:6,background:"#E1F5EE",color:"#085041",border:"1px solid #1D9E75",textDecoration:"none",fontWeight:600 }}>📱 WA Persiapan</a>}
-                            {hasPersiapan&&!hasQC1&&<a href={`https://wa.me/${WA_GROUPS[plan.grup]?.qcgate||""}?text=${encodeURIComponent("[MoldTrack] 🔍 QC GATE 1
-Size: "+plan.mold_size+"
-Mold selesai persiapan. Mohon cek visual.")}`} target="_blank" rel="noopener noreferrer"
-                              style={{ fontSize:11,padding:"4px 10px",borderRadius:6,background:"#FEF3C7",color:"#92400E",border:"1px solid #E8A020",textDecoration:"none",fontWeight:600 }}>📱 WA QC Gate 1</a>}
-                            {hasQC1&&!hasRakit&&<a href={`https://wa.me/${WA_GROUPS[plan.grup]?.rakit||""}?text=${encodeURIComponent("[MoldTrack] 🔨 RAKIT MOLD
-Size: "+plan.mold_size+"
-Lulus QC Gate 1. Mohon segera rakit mold.")}`} target="_blank" rel="noopener noreferrer"
-                              style={{ fontSize:11,padding:"4px 10px",borderRadius:6,background:"#EDE9FE",color:"#5B21B6",border:"1px solid #8B5CF6",textDecoration:"none",fontWeight:600 }}>📱 WA Rakit</a>}
-                            {hasRakit&&!hasNaik&&<a href={`https://wa.me/${WA_GROUPS[plan.grup]?.naik||""}?text=${encodeURIComponent("[MoldTrack] ⬆️ NAIK MOLD
-Size: "+plan.mold_size+"
-Lulus QC Gate 2. Siap naik ke mesin.")}`} target="_blank" rel="noopener noreferrer"
-                              style={{ fontSize:11,padding:"4px 10px",borderRadius:6,background:"#FCEBEB",color:"#791F1F",border:"1px solid #E24B4A",textDecoration:"none",fontWeight:600 }}>📱 WA Naik</a>}
+                                                    {/* Tombol WA manual per tahap */}
+                          {(()=>{
+                            const waUrl = (phone, msg) => "https://wa.me/"+(phone||"")+"?text="+encodeURIComponent(msg);
+                            const btnStyle = (bg,color,border) => ({ fontSize:11,padding:"4px 10px",borderRadius:6,background:bg,color,border:"1px solid "+border,textDecoration:"none",fontWeight:600 });
+                            return(
+                              <div style={{ marginTop:8,display:"flex",gap:6,flexWrap:"wrap" }}>
+                                {!hasPersiapan&&<a href={waUrl(WA_GROUPS[plan.grup]?.persiapan,"[MoldTrack] PERSIAPAN MOLD - Size: "+plan.mold_size+" - Shift: "+plan.shift+" - Mohon segera persiapan mold.")} target="_blank" rel="noopener noreferrer" style={btnStyle("#E1F5EE","#085041","#1D9E75")}>📱 WA Persiapan</a>}
+                                {hasPersiapan&&!hasQC1&&<a href={waUrl(WA_GROUPS[plan.grup]?.qcgate,"[MoldTrack] QC GATE 1 - Size: "+plan.mold_size+" - Mold selesai persiapan. Mohon cek visual.")} target="_blank" rel="noopener noreferrer" style={btnStyle("#FEF3C7","#92400E","#E8A020")}>📱 WA QC Gate 1</a>}
+                                {hasQC1&&!hasRakit&&<a href={waUrl(WA_GROUPS[plan.grup]?.rakit,"[MoldTrack] RAKIT MOLD - Size: "+plan.mold_size+" - Lulus QC Gate 1. Mohon segera rakit mold.")} target="_blank" rel="noopener noreferrer" style={btnStyle("#EDE9FE","#5B21B6","#8B5CF6")}>📱 WA Rakit</a>}
+                                {hasRakit&&!hasNaik&&<a href={waUrl(WA_GROUPS[plan.grup]?.naik,"[MoldTrack] NAIK MOLD - Size: "+plan.mold_size+" - Lulus QC Gate 2. Siap naik ke mesin.")} target="_blank" rel="noopener noreferrer" style={btnStyle("#FCEBEB","#791F1F","#E24B4A")}>📱 WA Naik</a>}
+                              </div>
+                            );
+                          })()}
                           </div>
                         </div>
                       );
