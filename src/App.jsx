@@ -715,6 +715,12 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
   const emptyRakitForm = () => ({ moldSize:"", moldSerial:"", plant:"", line:"", machine:"", partsChecked:[], kondisiCavity:"", kondisiContainer:"", hasilRakit:"ok", catatan:"", operator:"",  date:new Date().toISOString().slice(0,10) });
   const [rakitTab, setRakitTab]       = useState("search");
   const [rakitSearch, setRakitSearch] = useState("");
+  const [firstCureData, setFirstCureData]   = useState([]);
+  const [firstCureLoaded, setFirstCureLoaded] = useState(false);
+  const [uploadFile, setUploadFile]         = useState(null);
+  const [uploadPreview, setUploadPreview]   = useState([]);
+  const [uploadLoading, setUploadLoading]   = useState(false);
+  const [uploadMsg, setUploadMsg]           = useState("");
   const [rakitForm, setRakitForm]     = useState(emptyRakitForm());
   const [rakitRecords, setRakitRecords] = useState([]);
 
@@ -770,12 +776,35 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
     setShiftPlanRecords(data||[]);
   },[]);
 
+  const loadFirstCureData = useCallback(async () => {
+    const { data } = await supabase.from("first_cure_data").select("*").order("uploaded_at", { ascending: false });
+    if (data) { setFirstCureData(data); setFirstCureLoaded(true); }
+  }, []);
+
+  const uploadFirstCureData = async (rows) => {
+    setUploadLoading(true);
+    setUploadMsg("Menghapus data lama...");
+    await supabase.from("first_cure_data").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    setUploadMsg("Menyimpan " + rows.length + " record...");
+    const chunkSize = 100;
+    for (let i = 0; i < rows.length; i += chunkSize) {
+      const chunk = rows.slice(i, i + chunkSize).map(r => ({...r, uploaded_by: currentUser?.id}));
+      await supabase.from("first_cure_data").insert(chunk);
+      setUploadMsg("Menyimpan... " + Math.min(i + chunkSize, rows.length) + "/" + rows.length);
+    }
+    setUploadLoading(false);
+    setUploadMsg("✅ Berhasil upload " + rows.length + " record!");
+    setUploadFile(null);
+    setUploadPreview([]);
+    loadFirstCureData();
+  };
+
   const loadRakitRecords = useCallback(async () => {
     const { data } = await supabase.from("rakit_mold_records").select("*").order("created_at",{ascending:false});
     setRakitRecords(data||[]);
   },[]);
 
-  useEffect(()=>{ if(currentUser){ loadRecords(); loadPrepRecords(); loadQcRecords(); loadNaikRecords(); loadRakitRecords(); loadShiftPlanRecords(); } },[loadRecords, loadPrepRecords, loadQcRecords, loadNaikRecords, loadRakitRecords, loadShiftPlanRecords, currentUser]);
+  useEffect(()=>{ if(currentUser){ loadRecords(); loadPrepRecords(); loadQcRecords(); loadNaikRecords(); loadRakitRecords(); loadShiftPlanRecords(); loadFirstCureData(); } },[loadRecords, loadPrepRecords, loadQcRecords, loadNaikRecords, loadRakitRecords, loadShiftPlanRecords, loadFirstCureData, currentUser]);
 
   useEffect(()=>{
     if (!currentUser) return;
@@ -2800,7 +2829,7 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
 
                 {/* TAB NAVIGATION */}
                 <div style={{ display:"flex",gap:8,marginBottom:16 }}>
-                  {[["search","🔍 Cari Data"]].map(([id,lbl])=>(
+                  {[["search","🔍 Cari Data"], ...(canAnalyst(role)?[["upload","📤 Upload Data"]]:[])].map(([id,lbl])=>(
                     <button key={id} onClick={()=>setRakitTab(id)}
                       style={{ flex:1,padding:"10px",borderRadius:8,border:"1.5px solid",cursor:"pointer",fontSize:13,fontWeight:600,
                         borderColor:rakitTab===id?"#1D9E75":"#e0e0e0",
@@ -2814,8 +2843,9 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
                 {/* SEARCH TAB */}
                 {rakitTab==="search"&&(()=>{
                   const q = rakitSearch.trim().toUpperCase();
+                  const sourceData = firstCureLoaded && firstCureData.length > 0 ? firstCureData : RAKIT_DATA;
                   const results = q.length>=2
-                    ? RAKIT_DATA.filter(r=>r.size.includes(q)||r.code.toUpperCase().includes(q)||r.mc.toUpperCase().includes(q))
+                    ? sourceData.filter(r=>r.size?.toUpperCase().includes(q)||r.code?.toUpperCase().includes(q)||r.mc?.toUpperCase().includes(q))
                     : [];
                   const firstCureColor = (fc) => {
                     if (!fc) return { bg:"#f0f0f0", color:"#999" };
@@ -2850,7 +2880,7 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
                           <div style={{ fontSize:32,marginBottom:8 }}>🔍</div>
                           <div style={{ fontSize:13,fontWeight:600,marginBottom:4 }}>Cari Data First Cure</div>
                           <div style={{ fontSize:11 }}>Ketik size mold untuk melihat history data rakit & kalibrasi</div>
-                          <div style={{ marginTop:12,fontSize:11,color:"#bbb" }}>Total data: {RAKIT_DATA.length} record · {[...new Set(RAKIT_DATA.map(r=>r.size).filter(Boolean))].length} size</div>
+                          <div style={{ marginTop:12,fontSize:11,color:"#bbb" }}>Total data: {sourceData.length} record · {[...new Set(sourceData.map(r=>r.size).filter(Boolean))].length} size {firstCureLoaded&&firstCureData.length>0?"(dari Supabase)":"(dari cache)"}</div>
                         </div>
                       )}
 
@@ -2939,6 +2969,127 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
                     </div>
                   );
                 })()}
+
+                {/* UPLOAD TAB */}
+                {rakitTab==="upload"&&canAnalyst(role)&&(
+                  <div>
+                    {/* Info */}
+                    <div style={{ background:"#EDE9FE",borderRadius:10,padding:"12px 16px",marginBottom:16,fontSize:13 }}>
+                      <div style={{ fontWeight:700,color:"#5B21B6",marginBottom:4 }}>📤 Upload Data First Cure</div>
+                      <div style={{ color:"#6B7280",fontSize:12 }}>Pilih file Excel (sheet "History Data"). Data lama akan diganti seluruhnya dengan data baru.</div>
+                      {firstCureLoaded&&<div style={{ marginTop:6,fontSize:11,color:"#8B5CF6" }}>Data aktif di Supabase: <strong>{firstCureData.length} record</strong></div>}
+                    </div>
+
+                    {/* File picker */}
+                    <div style={{ border:"2px dashed #D1D5DB",borderRadius:10,padding:"24px",textAlign:"center",marginBottom:16,background:"#FAFAFA" }}>
+                      <div style={{ fontSize:28,marginBottom:8 }}>📂</div>
+                      <div style={{ fontSize:13,color:"#666",marginBottom:12 }}>Pilih file Excel dari komputer Anda</div>
+                      <input type="file" accept=".xlsx,.xls" style={{ display:"none" }} id="fc-upload-input"
+                        onChange={async (e)=>{
+                          const file = e.target.files[0];
+                          if (!file) return;
+                          setUploadFile(file);
+                          setUploadMsg("Membaca file...");
+                          try {
+                            const XLSX = await import("https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs");
+                            const buf = await file.arrayBuffer();
+                            const wb = XLSX.read(buf, {type:"array",cellDates:true});
+                            // Cari sheet yang relevan
+                            const sheetName = wb.SheetNames.find(s=>s.toLowerCase().includes("first cure")||s.toLowerCase().includes("history")) || wb.SheetNames[0];
+                            const ws = wb.Sheets[sheetName];
+                            const rows = XLSX.utils.sheet_to_json(ws, {defval:""});
+                            // Map kolom
+                            const mapped = rows.map(r=>{
+                              const findVal = (keys) => {
+                                for (const k of keys) {
+                                  const found = Object.keys(r).find(rk => rk.toLowerCase().replace(/[\s_]/g,"").includes(k));
+                                  if (found && r[found]!==undefined) return String(r[found]).trim();
+                                }
+                                return "";
+                              };
+                              const code = findVal(["code"]);
+                              let size = "";
+                              const m = code.match(/^([A-Za-z0-9]+)\s*-\s*\d+/);
+                              if (m) size = m[1].toUpperCase();
+                              return {
+                                tgl: findVal(["tglrakit","tanggal","date","tgl"]),
+                                pic: findVal(["pic"]),
+                                code,
+                                size,
+                                container: findVal(["container"]),
+                                ket: findVal(["ket","keterangan2","status"]),
+                                mc: findVal(["mc"]),
+                                nilai_preload: findVal(["nilaipreload","preload"]),
+                                vmc: findVal(["vmc"]),
+                                shim_sr: findVal(["shimsidering","shimsr","sidering"]),
+                                shim_pl: findVal(["shimpreload","shimpl"]),
+                                first_cure: findVal(["hasilfirstcure","firstcure","hasil"]),
+                                keterangan: findVal(["ket.firstcure","keteranganfirst","ketfirst","keterangan"]),
+                              };
+                            }).filter(r=>r.code);
+                            setUploadPreview(mapped);
+                            setUploadMsg("Preview: " + mapped.length + " record siap diupload.");
+                          } catch(err) {
+                            setUploadMsg("❌ Error membaca file: " + err.message);
+                          }
+                        }}
+                      />
+                      <label htmlFor="fc-upload-input" style={{ cursor:"pointer",background:"#1D9E75",color:"#fff",padding:"8px 20px",borderRadius:8,fontWeight:600,fontSize:13 }}>
+                        Pilih File Excel
+                      </label>
+                      {uploadFile&&<div style={{ marginTop:8,fontSize:12,color:"#666" }}>📄 {uploadFile.name}</div>}
+                    </div>
+
+                    {/* Status message */}
+                    {uploadMsg&&(
+                      <div style={{ padding:"10px 14px",borderRadius:8,background: uploadMsg.startsWith("✅")?"#E1F5EE":uploadMsg.startsWith("❌")?"#FCEBEB":"#FEF3C7",
+                        color: uploadMsg.startsWith("✅")?"#085041":uploadMsg.startsWith("❌")?"#791F1F":"#92400E",
+                        fontSize:13,marginBottom:12,fontWeight:600 }}>
+                        {uploadMsg}
+                      </div>
+                    )}
+
+                    {/* Preview */}
+                    {uploadPreview.length>0&&(
+                      <div>
+                        <div style={{ fontWeight:700,fontSize:13,marginBottom:8,color:"#333" }}>
+                          Preview {Math.min(5,uploadPreview.length)} dari {uploadPreview.length} record:
+                        </div>
+                        <div style={{ overflow:"auto",borderRadius:8,border:"1px solid #e0e0e0",marginBottom:16 }}>
+                          <table style={{ width:"100%",borderCollapse:"collapse",fontSize:11 }}>
+                            <thead>
+                              <tr style={{ background:"#f5f5f5" }}>
+                                {["Tgl","PIC","Code","Size","MC","Nilai PL","VMC","Shim SR","Shim PL","First Cure"].map(h=>(
+                                  <th key={h} style={{ padding:"6px 8px",textAlign:"left",borderBottom:"1px solid #e0e0e0",whiteSpace:"nowrap" }}>{h}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {uploadPreview.slice(0,5).map((r,i)=>(
+                                <tr key={i} style={{ borderBottom:"1px solid #f0f0f0" }}>
+                                  {[r.tgl,r.pic,r.code,r.size,r.mc,r.nilai_preload,r.vmc,r.shim_sr,r.shim_pl,r.first_cure].map((v,j)=>(
+                                    <td key={j} style={{ padding:"6px 8px",whiteSpace:"nowrap",maxWidth:100,overflow:"hidden",textOverflow:"ellipsis" }}>{v||"-"}</td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Tombol simpan */}
+                        <button
+                          onClick={()=>{ if(window.confirm("Hapus semua data lama dan upload "+uploadPreview.length+" record baru?")) uploadFirstCureData(uploadPreview); }}
+                          disabled={uploadLoading}
+                          style={{ width:"100%",padding:"12px",borderRadius:8,background:uploadLoading?"#ccc":"#1D9E75",color:"#fff",border:"none",fontWeight:700,fontSize:14,cursor:uploadLoading?"not-allowed":"pointer" }}>
+                          {uploadLoading?"⏳ Sedang upload...":"💾 Simpan ke Database ("+uploadPreview.length+" record)"}
+                        </button>
+                        <div style={{ fontSize:11,color:"#999",textAlign:"center",marginTop:6 }}>
+                          ⚠️ Data lama akan dihapus dan diganti dengan data baru
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* FORM TAB */}
                 
