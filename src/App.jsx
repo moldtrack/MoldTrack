@@ -3005,22 +3005,31 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
                             const buf = await file.arrayBuffer();
                             const wb = XLSX.read(buf, {type:"array", cellDates:true});
 
-                            // Cari sheet yang sesuai - prioritas "FIRST CURE RAKIT PRELOAD"
-                            const TARGET_SHEET = "FIRST CURE RAKIT PRELOAD";
-                            const sheetName = wb.SheetNames.find(s=>s.toUpperCase()===TARGET_SHEET.toUpperCase())
-                              || wb.SheetNames.find(s=>s.toLowerCase().includes("first cure rakit"))
-                              || wb.SheetNames.find(s=>s.toLowerCase().includes("first cure"))
-                              || wb.SheetNames[0];
+                            // Cari SEMUA sheet yang punya data first cure (format kolom sama)
+                            const DATA_SHEET_KEYWORDS = ["first cure rakit","fc rakit","first cure"];
+                            const dataSheets = wb.SheetNames.filter(s =>
+                              DATA_SHEET_KEYWORDS.some(k => s.toLowerCase().includes(k))
+                            );
+                            if (dataSheets.length === 0) {
+                              setUploadMsg("❌ Tidak ditemukan sheet data First Cure di file ini.");
+                              return;
+                            }
+                            const sheetName = dataSheets.join(", ");
 
-                            const ws = wb.Sheets[sheetName];
-                            const rows = XLSX.utils.sheet_to_json(ws, {defval:"", raw:false});
+                            // Gabungkan semua rows dari semua sheet
+                            let rows = [];
+                            for (const sName of dataSheets) {
+                              const ws = wb.Sheets[sName];
+                              const sheetRows = XLSX.utils.sheet_to_json(ws, {defval:"", raw:false});
+                              rows = rows.concat(sheetRows);
+                            }
 
                             if (rows.length === 0) {
-                              setUploadMsg("❌ Sheet [" + sheetName + "] kosong atau tidak ditemukan header.");
+                              setUploadMsg("❌ Semua sheet kosong atau tidak ditemukan header.");
                               return;
                             }
 
-                            // Deteksi kolom — buat mapping otomatis
+                            // Deteksi kolom — buat mapping otomatis dari sheet pertama
                             const headers = Object.keys(rows[0]);
                             const norm = (s) => String(s).toLowerCase().replace(/[\s_\.]/g,"");
                             const findCol = (keys) => headers.find(h => keys.some(k => norm(h).includes(k))) || null;
