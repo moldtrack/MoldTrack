@@ -784,17 +784,17 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
 
   const uploadFirstCureData = async (rows) => {
     setUploadLoading(true);
-    setUploadMsg("Menghapus data lama...");
-    await supabase.from("first_cure_data").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-    setUploadMsg("Menyimpan " + rows.length + " record...");
+    setUploadMsg("Menyimpan " + rows.length + " record baru...");
     const chunkSize = 100;
+    let success = 0;
     for (let i = 0; i < rows.length; i += chunkSize) {
       const chunk = rows.slice(i, i + chunkSize).map(r => ({...r, uploaded_by: currentUser?.id}));
-      await supabase.from("first_cure_data").insert(chunk);
+      const { error } = await supabase.from("first_cure_data").insert(chunk);
+      if (!error) success += chunk.length;
       setUploadMsg("Menyimpan... " + Math.min(i + chunkSize, rows.length) + "/" + rows.length);
     }
     setUploadLoading(false);
-    setUploadMsg("✅ Berhasil upload " + rows.length + " record!");
+    setUploadMsg("✅ Berhasil menambahkan " + success + " data baru ke database!");
     setUploadFile(null);
     setUploadPreview([]);
     loadFirstCureData();
@@ -2991,56 +2991,105 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
                           if (!file) return;
                           setUploadFile(file);
                           setUploadMsg("Membaca file...");
+                          setUploadPreview([]);
                           try {
-                            // Load SheetJS dari CDN jika belum ada
-                          if (!window.XLSX) {
-                            await new Promise((resolve, reject) => {
-                              const s = document.createElement("script");
-                              s.src = "https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js";
-                              s.onload = resolve; s.onerror = reject;
-                              document.head.appendChild(s);
-                            });
-                          }
-                          const XLSX = window.XLSX;
-                          const buf = await file.arrayBuffer();
-                          const wb = XLSX.read(buf, {type:"array",cellDates:true});
-                            // Cari sheet yang relevan
-                            const sheetName = wb.SheetNames.find(s=>s.toLowerCase().includes("first cure")||s.toLowerCase().includes("history")) || wb.SheetNames[0];
+                            if (!window.XLSX) {
+                              await new Promise((resolve, reject) => {
+                                const s = document.createElement("script");
+                                s.src = "https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js";
+                                s.onload = resolve; s.onerror = reject;
+                                document.head.appendChild(s);
+                              });
+                            }
+                            const XLSX = window.XLSX;
+                            const buf = await file.arrayBuffer();
+                            const wb = XLSX.read(buf, {type:"array", cellDates:true});
+
+                            // Cari sheet yang sesuai - prioritas "FIRST CURE RAKIT PRELOAD"
+                            const TARGET_SHEET = "FIRST CURE RAKIT PRELOAD";
+                            const sheetName = wb.SheetNames.find(s=>s.toUpperCase()===TARGET_SHEET.toUpperCase())
+                              || wb.SheetNames.find(s=>s.toLowerCase().includes("first cure rakit"))
+                              || wb.SheetNames.find(s=>s.toLowerCase().includes("first cure"))
+                              || wb.SheetNames[0];
+
                             const ws = wb.Sheets[sheetName];
-                            const rows = XLSX.utils.sheet_to_json(ws, {defval:""});
-                            // Map kolom
-                            const mapped = rows.map(r=>{
-                              const findVal = (keys) => {
-                                for (const k of keys) {
-                                  const found = Object.keys(r).find(rk => rk.toLowerCase().replace(/[\s_]/g,"").includes(k));
-                                  if (found && r[found]!==undefined) return String(r[found]).trim();
-                                }
-                                return "";
-                              };
-                              const code = findVal(["code"]);
+                            const rows = XLSX.utils.sheet_to_json(ws, {defval:"", raw:false});
+
+                            if (rows.length === 0) {
+                              setUploadMsg("❌ Sheet [" + sheetName + "] kosong atau tidak ditemukan header.");
+                              return;
+                            }
+
+                            // Deteksi kolom — buat mapping otomatis
+                            const headers = Object.keys(rows[0]);
+                            const norm = (s) => String(s).toLowerCase().replace(/[\s_\.]/g,"");
+                            const findCol = (keys) => headers.find(h => keys.some(k => norm(h).includes(k))) || null;
+
+                            const colMap = {
+                              tgl:          findCol(["tglrakit","tanggalrakit","tgl","tanggal","date"]),
+                              pic:          findCol(["pic"]),
+                              code:         findCol(["code"]),
+                              container:    findCol(["container"]),
+                              ket:          findCol(["ket","status"]),
+                              mc:           findCol(["mc"]),
+                              nilai_preload:findCol(["nilaipreload","nilaipl","preload"]),
+                              vmc:          findCol(["vmc"]),
+                              shim_sr:      findCol(["shimsidering","shimsr","sidering","shimr"]),
+                              shim_pl:      findCol(["shimpreload","shimpl","shimp"]),
+                              first_cure:   findCol(["hasilfirstcure","firstcure","hasil"]),
+                              keterangan:   findCol(["keteranganfirstcure","ketfirstcure","ket.firstcure","keteranganfirst","keterangan"]),
+                            };
+
+                            // QC Gate: cek kolom wajib
+                            const required = ["code","first_cure","mc"];
+                            const missing = required.filter(k => !colMap[k]);
+
+                            // Simpan mapping info untuk ditampilkan
+                            const mappingInfo = Object.entries(colMap).map(([appCol, excelCol]) => ({
+                              app: appCol, excel: excelCol,
+                              required: required.includes(appCol),
+                              ok: !!excelCol
+                            }));
+
+                            // Parse data
+                            const getVal = (row, col) => col ? String(row[col]||"").trim() : "";
+                            const mapped = rows.map(r => {
+                              const code = getVal(r, colMap.code);
+                              if (!code) return null;
                               let size = "";
-                              const m = code.match(/^([A-Za-z0-9]+)\s*-\s*\d+/);
+                              const m = code.match(/^([A-Za-z0-9]+)\s*[-–]\s*\d+/);
                               if (m) size = m[1].toUpperCase();
+                              // Format tanggal
+                              let tgl = getVal(r, colMap.tgl);
+                              if (tgl && tgl.includes("T")) tgl = tgl.split("T")[0]; // ISO date
                               return {
-                                tgl: findVal(["tglrakit","tanggal","date","tgl"]),
-                                pic: findVal(["pic"]),
-                                code,
-                                size,
-                                container: findVal(["container"]),
-                                ket: findVal(["ket","keterangan2","status"]),
-                                mc: findVal(["mc"]),
-                                nilai_preload: findVal(["nilaipreload","preload"]),
-                                vmc: findVal(["vmc"]),
-                                shim_sr: findVal(["shimsidering","shimsr","sidering"]),
-                                shim_pl: findVal(["shimpreload","shimpl"]),
-                                first_cure: findVal(["hasilfirstcure","firstcure","hasil"]),
-                                keterangan: findVal(["ket.firstcure","keteranganfirst","ketfirst","keterangan"]),
+                                tgl, pic: getVal(r, colMap.pic), code, size,
+                                container: getVal(r, colMap.container),
+                                ket: getVal(r, colMap.ket),
+                                mc: getVal(r, colMap.mc),
+                                nilai_preload: getVal(r, colMap.nilai_preload),
+                                vmc: getVal(r, colMap.vmc),
+                                shim_sr: getVal(r, colMap.shim_sr),
+                                shim_pl: getVal(r, colMap.shim_pl),
+                                first_cure: getVal(r, colMap.first_cure),
+                                keterangan: getVal(r, colMap.keterangan),
                               };
-                            }).filter(r=>r.code);
+                            }).filter(Boolean);
+
+                            // Cek duplikat vs data di Supabase
+                            const existingCodes = new Set((firstCureData.length > 0 ? firstCureData : RAKIT_DATA).map(r=>r.code));
+                            const newRows = mapped.filter(r => !existingCodes.has(r.code));
+                            const dupRows = mapped.filter(r => existingCodes.has(r.code));
+
                             setUploadPreview(mapped);
-                            setUploadMsg("Preview: " + mapped.length + " record siap diupload.");
+                            // Simpan info extra ke state via object
+                            setUploadMsg(JSON.stringify({
+                              type:"qc", sheetName, total:mapped.length,
+                              newCount: newRows.length, dupCount: dupRows.length,
+                              missing, mappingInfo, newRows, dupRows
+                            }));
                           } catch(err) {
-                            setUploadMsg("❌ Error membaca file: " + err.message);
+                            setUploadMsg("❌ Error: " + err.message);
                           }
                         }}
                       />
@@ -3050,54 +3099,115 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
                       {uploadFile&&<div style={{ marginTop:8,fontSize:12,color:"#666" }}>📄 {uploadFile.name}</div>}
                     </div>
 
-                    {/* Status message */}
-                    {uploadMsg&&(
-                      <div style={{ padding:"10px 14px",borderRadius:8,background: uploadMsg.startsWith("✅")?"#E1F5EE":uploadMsg.startsWith("❌")?"#FCEBEB":"#FEF3C7",
-                        color: uploadMsg.startsWith("✅")?"#085041":uploadMsg.startsWith("❌")?"#791F1F":"#92400E",
-                        fontSize:13,marginBottom:12,fontWeight:600 }}>
-                        {uploadMsg}
-                      </div>
-                    )}
+                    {/* QC Gate & Status */}
+                    {uploadMsg&&(()=>{
+                      // Cek apakah ini QC result (JSON) atau pesan biasa
+                      let qc = null;
+                      try { const p = JSON.parse(uploadMsg); if(p.type==="qc") qc = p; } catch(e){}
 
-                    {/* Preview */}
-                    {uploadPreview.length>0&&(
-                      <div>
-                        <div style={{ fontWeight:700,fontSize:13,marginBottom:8,color:"#333" }}>
-                          Preview {Math.min(5,uploadPreview.length)} dari {uploadPreview.length} record:
-                        </div>
-                        <div style={{ overflow:"auto",borderRadius:8,border:"1px solid #e0e0e0",marginBottom:16 }}>
-                          <table style={{ width:"100%",borderCollapse:"collapse",fontSize:11 }}>
-                            <thead>
-                              <tr style={{ background:"#f5f5f5" }}>
-                                {["Tgl","PIC","Code","Size","MC","Nilai PL","VMC","Shim SR","Shim PL","First Cure"].map(h=>(
-                                  <th key={h} style={{ padding:"6px 8px",textAlign:"left",borderBottom:"1px solid #e0e0e0",whiteSpace:"nowrap" }}>{h}</th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {uploadPreview.slice(0,5).map((r,i)=>(
-                                <tr key={i} style={{ borderBottom:"1px solid #f0f0f0" }}>
-                                  {[r.tgl,r.pic,r.code,r.size,r.mc,r.nilai_preload,r.vmc,r.shim_sr,r.shim_pl,r.first_cure].map((v,j)=>(
-                                    <td key={j} style={{ padding:"6px 8px",whiteSpace:"nowrap",maxWidth:100,overflow:"hidden",textOverflow:"ellipsis" }}>{v||"-"}</td>
-                                  ))}
-                                </tr>
+                      if (!qc) {
+                        // Pesan biasa (error / success)
+                        return (
+                          <div style={{ padding:"10px 14px",borderRadius:8,marginBottom:12,fontWeight:600,fontSize:13,
+                            background:uploadMsg.startsWith("✅")?"#E1F5EE":uploadMsg.startsWith("❌")?"#FCEBEB":"#FEF3C7",
+                            color:uploadMsg.startsWith("✅")?"#085041":uploadMsg.startsWith("❌")?"#791F1F":"#92400E" }}>
+                            {uploadMsg}
+                          </div>
+                        );
+                      }
+
+                      // QC Gate UI
+                      const hasMissing = qc.missing.length > 0;
+                      return (
+                        <div>
+                          {/* Sheet info */}
+                          <div style={{ background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:8,padding:"10px 14px",marginBottom:12,fontSize:12 }}>
+                            📋 Sheet dibaca: <strong>{qc.sheetName}</strong> · Total: <strong>{qc.total} record</strong>
+                          </div>
+
+                          {/* Mapping kolom */}
+                          <div style={{ marginBottom:12 }}>
+                            <div style={{ fontWeight:700,fontSize:13,marginBottom:6 }}>🔍 Mapping Kolom:</div>
+                            <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:4 }}>
+                              {qc.mappingInfo.map(({app,excel,required,ok})=>(
+                                <div key={app} style={{ fontSize:11,padding:"4px 8px",borderRadius:6,
+                                  background:ok?"#F0FDF4":required?"#FCEBEB":"#FEF3C7",
+                                  border:"1px solid "+(ok?"#BBF7D0":required?"#FECACA":"#FDE68A") }}>
+                                  {ok?"✅":"❌"} <strong>{app}</strong> {ok?"← "+excel:required?"(WAJIB, tidak ditemukan!)":"(tidak ditemukan)"}
+                                </div>
                               ))}
-                            </tbody>
-                          </table>
-                        </div>
+                            </div>
+                          </div>
 
-                        {/* Tombol simpan */}
-                        <button
-                          onClick={()=>{ if(window.confirm("Hapus semua data lama dan upload "+uploadPreview.length+" record baru?")) uploadFirstCureData(uploadPreview); }}
-                          disabled={uploadLoading}
-                          style={{ width:"100%",padding:"12px",borderRadius:8,background:uploadLoading?"#ccc":"#1D9E75",color:"#fff",border:"none",fontWeight:700,fontSize:14,cursor:uploadLoading?"not-allowed":"pointer" }}>
-                          {uploadLoading?"⏳ Sedang upload...":"💾 Simpan ke Database ("+uploadPreview.length+" record)"}
-                        </button>
-                        <div style={{ fontSize:11,color:"#999",textAlign:"center",marginTop:6 }}>
-                          ⚠️ Data lama akan dihapus dan diganti dengan data baru
+                          {/* Warning jika kolom wajib hilang */}
+                          {hasMissing&&(
+                            <div style={{ background:"#FCEBEB",border:"1px solid #FECACA",borderRadius:8,padding:"10px 14px",marginBottom:12,fontSize:13,color:"#791F1F",fontWeight:600 }}>
+                              ❌ Kolom wajib tidak ditemukan: {qc.missing.join(", ")}. Periksa file Excel sebelum upload.
+                            </div>
+                          )}
+
+                          {/* Summary new vs duplikat */}
+                          {!hasMissing&&(
+                            <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12 }}>
+                              <div style={{ background:"#E1F5EE",borderRadius:8,padding:"12px",textAlign:"center" }}>
+                                <div style={{ fontSize:24,fontWeight:700,color:"#085041" }}>{qc.newCount}</div>
+                                <div style={{ fontSize:11,color:"#1D9E75" }}>✅ Data BARU (akan ditambahkan)</div>
+                              </div>
+                              <div style={{ background:"#F3F4F6",borderRadius:8,padding:"12px",textAlign:"center" }}>
+                                <div style={{ fontSize:24,fontWeight:700,color:"#666" }}>{qc.dupCount}</div>
+                                <div style={{ fontSize:11,color:"#999" }}>⏭️ Duplikat (akan di-skip)</div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Preview data baru */}
+                          {!hasMissing&&qc.newRows.length>0&&(
+                            <div style={{ marginBottom:12 }}>
+                              <div style={{ fontWeight:700,fontSize:12,marginBottom:6,color:"#333" }}>
+                                Preview {Math.min(5,qc.newRows.length)} data baru:
+                              </div>
+                              <div style={{ overflow:"auto",borderRadius:8,border:"1px solid #e0e0e0" }}>
+                                <table style={{ width:"100%",borderCollapse:"collapse",fontSize:11 }}>
+                                  <thead>
+                                    <tr style={{ background:"#f5f5f5" }}>
+                                      {["Tgl","PIC","Code","MC","Nilai PL","Shim SR","Shim PL","First Cure"].map(h=>(
+                                        <th key={h} style={{ padding:"5px 8px",textAlign:"left",borderBottom:"1px solid #e0e0e0",whiteSpace:"nowrap" }}>{h}</th>
+                                      ))}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {qc.newRows.slice(0,5).map((r,i)=>(
+                                      <tr key={i} style={{ borderBottom:"1px solid #f0f0f0",background:"#F0FDF4" }}>
+                                        {[r.tgl,r.pic,r.code,r.mc,r.nilai_preload,r.shim_sr,r.shim_pl,r.first_cure].map((v,j)=>(
+                                          <td key={j} style={{ padding:"5px 8px",whiteSpace:"nowrap" }}>{v||"-"}</td>
+                                        ))}
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Tidak ada data baru */}
+                          {!hasMissing&&qc.newCount===0&&(
+                            <div style={{ background:"#FEF3C7",borderRadius:8,padding:"12px",textAlign:"center",marginBottom:12,fontSize:13,color:"#92400E" }}>
+                              ⚠️ Tidak ada data baru — semua record sudah ada di database.
+                            </div>
+                          )}
+
+                          {/* Tombol simpan */}
+                          {!hasMissing&&qc.newCount>0&&(
+                            <button
+                              onClick={()=>{ if(window.confirm("Tambahkan "+qc.newCount+" data baru ke database? "+qc.dupCount+" duplikat akan di-skip.")) uploadFirstCureData(qc.newRows); }}
+                              disabled={uploadLoading}
+                              style={{ width:"100%",padding:"12px",borderRadius:8,background:uploadLoading?"#ccc":"#1D9E75",color:"#fff",border:"none",fontWeight:700,fontSize:14,cursor:uploadLoading?"not-allowed":"pointer",marginBottom:6 }}>
+                              {uploadLoading?"⏳ Sedang upload...":"💾 Tambahkan "+qc.newCount+" Data Baru ke Database"}
+                            </button>
+                          )}
                         </div>
-                      </div>
-                    )}
+                      );
+                    })()}
                   </div>
                 )}
 
