@@ -888,7 +888,6 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
       showToast("Rakit dicatat — Perlu review lebih lanjut ✅");
     }
     setRakitForm(emptyRakitForm());
-    setRakitTab("database");
   };
 
   const submitPrepOut = async () => {
@@ -1041,7 +1040,7 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
     if(p==="shplan") setShTab("form");
     if(p==="entry"){ setForm(emptyForm()); setEditId(null); setEntryTab("form"); }
     if(p==="qcgate") setQcMode("entry");
-    if(p==="rakit")  setRakitTab("form");
+    if(p==="rakit")  setRakitTab("search");
     if(p==="naik")   setNaikTab("form");
   };
 
@@ -2801,7 +2800,7 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
 
                 {/* TAB NAVIGATION */}
                 <div style={{ display:"flex",gap:8,marginBottom:16 }}>
-                  {[["search","🔍 Cari Data"],["form","🔧 Input"],["database","📋 Database"]].map(([id,lbl])=>(
+                  {[["search","🔍 Cari Data"]].map(([id,lbl])=>(
                     <button key={id} onClick={()=>setRakitTab(id)}
                       style={{ flex:1,padding:"10px",borderRadius:8,border:"1.5px solid",cursor:"pointer",fontSize:13,fontWeight:600,
                         borderColor:rakitTab===id?"#1D9E75":"#e0e0e0",
@@ -2942,184 +2941,7 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
                 })()}
 
                 {/* FORM TAB */}
-                {rakitTab==="form"&&(
-                  <div>
-                    <div className="card-title" style={{ textAlign:"center",fontSize:16,marginBottom:16 }}>🔧 Rakit Mold</div>
-
-                    {/* TANGGAL */}
-                    <div className="form-group">
-                      <label className="form-label">Tanggal *</label>
-                      <input type="date" className="form-input" value={rakitForm.date} onChange={e=>setRakitForm(f=>({...f,date:e.target.value}))} />
-                    </div>
-
-                    {/* MESIN */}
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label className="form-label">Plant *</label>
-                        <select className="form-input" value={rakitForm.plant} onChange={e=>setRakitForm(f=>({...f,plant:e.target.value,line:"",machine:""}))}>
-                          <option value="">— Pilih —</option>
-                          {PLANTS.map(p=><option key={p} value={p}>Plant {p}</option>)}
-                        </select>
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">Line *</label>
-                        <select className="form-input" value={rakitForm.line} onChange={e=>setRakitForm(f=>({...f,line:e.target.value,machine:""}))}>
-                          <option value="">— Pilih —</option>
-                          {LINES.map(l=><option key={l} value={l}>Line {l}</option>)}
-                        </select>
-                      </div>
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Mesin *</label>
-                      <select className="form-input" value={rakitForm.machine} onChange={e=>setRakitForm(f=>({...f,machine:e.target.value}))}>
-                        <option value="">— Pilih —</option>
-                        {(rakitForm.plant==="D"?MACHINES_D:rakitForm.plant==="K"?MACHINES_K:[]).map(m=><option key={m} value={m}>{m}</option>)}
-                      </select>
-                    </div>
-                    {rakitForm.plant&&rakitForm.line&&rakitForm.machine&&(
-                      <div style={{ background:"#E1F5EE",borderRadius:8,padding:"10px 14px",display:"flex",alignItems:"center",gap:8,marginBottom:14 }}>
-                        <i className="ti ti-robot" style={{ fontSize:18,color:"#1D9E75" }}></i>
-                        <div>
-                          <div style={{ fontSize:10,color:"#666",marginBottom:2 }}>Kode mesin</div>
-                          <div style={{ fontSize:18,fontWeight:700,color:"#085041",letterSpacing:1 }}>{rakitForm.plant}-{rakitForm.line}{rakitForm.machine}</div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* SIZE & SERIAL */}
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label className="form-label">Size Mold *</label>
-                        <input className="form-input" placeholder="cth: 205/65R15" value={rakitForm.moldSize} onChange={e=>setRakitForm(f=>({...f,moldSize:e.target.value}))} />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">No Seri / ID Mold</label>
-                        <input className="form-input" placeholder="cth: M-001" value={rakitForm.moldSerial} onChange={e=>setRakitForm(f=>({...f,moldSerial:e.target.value}))} />
-                      </div>
-                    </div>
-
-                    {/* CHECKLIST KOMPONEN */}
-                    <div className="card" style={{ marginBottom:14 }}>
-                      <div className="card-title">✅ Checklist Komponen</div>
-                      <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8 }}>
-                        {RAKIT_PARTS.map(part=>{
-                          const checked = rakitForm.partsChecked.includes(part);
-                          return(
-                            <div key={part} onClick={()=>setRakitForm(f=>({...f,partsChecked:checked?f.partsChecked.filter(p=>p!==part):[...f.partsChecked,part]}))}
-                              style={{ display:"flex",alignItems:"center",gap:8,padding:"10px 12px",borderRadius:8,border:`1.5px solid ${checked?"#1D9E75":"#e0e0e0"}`,background:checked?"#E1F5EE":"#f9f9f9",cursor:"pointer" }}>
-                              <div style={{ width:18,height:18,borderRadius:5,border:`1.5px solid ${checked?"#1D9E75":"#ccc"}`,background:checked?"#1D9E75":"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
-                                {checked&&<i className="ti ti-check" style={{ fontSize:11,color:"#fff" }}></i>}
-                              </div>
-                              <span style={{ fontSize:12,color:checked?"#085041":"#555",fontWeight:checked?500:400 }}>{part}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      {rakitForm.partsChecked.length>0&&(
-                        <div style={{ marginTop:10,fontSize:11,color:"#1D9E75",fontWeight:500 }}>
-                          {rakitForm.partsChecked.length}/{RAKIT_PARTS.length} komponen dicek
-                        </div>
-                      )}
-                    </div>
-
-                    {/* KONDISI */}
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label className="form-label">Kondisi Cavity</label>
-                        <select className="form-input" value={rakitForm.kondisiCavity} onChange={e=>setRakitForm(f=>({...f,kondisiCavity:e.target.value}))}>
-                          <option value="">— Pilih —</option>
-                          {["Baik","Kotor — sudah dibersihkan","Ada goresan ringan","Ada kerusakan"].map(o=><option key={o}>{o}</option>)}
-                        </select>
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">Kondisi Container</label>
-                        <select className="form-input" value={rakitForm.kondisiContainer} onChange={e=>setRakitForm(f=>({...f,kondisiContainer:e.target.value}))}>
-                          <option value="">— Pilih —</option>
-                          {["Baik","Ada karat ringan","Bolt longgar — sudah dikencangkan","Ada kerusakan"].map(o=><option key={o}>{o}</option>)}
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* HASIL RAKIT */}
-                    <div className="form-group">
-                      <label className="form-label">Hasil Rakit *</label>
-                      <div style={{ display:"flex",gap:8,flexWrap:"wrap" }}>
-                        {[
-                          ["ok","✅ OK — Siap naik","#1D9E75","#E1F5EE","#085041"],
-                          ["perlu_review","⚠️ Perlu Review","#E8A020","#FEF3C7","#92400E"],
-                          ["ditahan","🚫 Ditahan / Hold","#E24B4A","#FCEBEB","#791F1F"],
-                        ].map(([val,lbl,border,bg,color])=>(
-                          <div key={val} onClick={()=>setRakitForm(f=>({...f,hasilRakit:val}))}
-                            style={{ flex:1,padding:"10px 8px",borderRadius:8,border:`1.5px solid ${rakitForm.hasilRakit===val?border:"#e0e0e0"}`,background:rakitForm.hasilRakit===val?bg:"#f9f9f9",color:rakitForm.hasilRakit===val?color:"#666",fontSize:12,fontWeight:rakitForm.hasilRakit===val?600:400,cursor:"pointer",textAlign:"center",minWidth:100 }}>
-                            {lbl}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-
-
-                    {/* OPERATOR */}
-                    <AutocompleteInput label="Operator / PIC *" value={rakitForm.operator} onChange={v=>setRakitForm(f=>({...f,operator:v}))} suggestions={knownTechs} placeholder="Ketik nama operator..."/>
-
-                    {/* CATATAN */}
-                    <div className="form-group">
-                      <label className="form-label">Catatan</label>
-                      <textarea className="form-input" rows={3} placeholder="Catatan tambahan..." value={rakitForm.catatan||""} onChange={e=>setRakitForm(f=>({...f,catatan:e.target.value}))} style={{ resize:"vertical" }}/>
-                    </div>
-
-                    <button className="btn-primary" onClick={submitRakit}>🔧 Simpan Rakit Mold</button>
-                    <button className="btn-secondary" style={{ marginTop:8 }} onClick={()=>setRakitForm(emptyRakitForm())}>Reset</button>
-                  </div>
-                )}
-
-                {/* DATABASE TAB */}
-                {rakitTab==="database"&&(
-                  <div>
-                    <div style={{ marginBottom:10,fontSize:13,color:"#999" }}>{rakitRecords.length} record ditemukan</div>
-                    {rakitRecords.length===0&&<div className="card" style={{ textAlign:"center",color:"#999",fontSize:13,padding:24 }}>Belum ada record rakit mold.</div>}
-                    {rakitRecords.map(r=>{
-                      const hasilCfg = {
-                        ok:          { label:"✅ OK",           bg:"#E1F5EE", color:"#085041" },
-                        perlu_review:{ label:"⚠️ Perlu Review", bg:"#FEF3C7", color:"#92400E" },
-                        ditahan:     { label:"🚫 Ditahan",       bg:"#FCEBEB", color:"#791F1F" },
-                      };
-                      const cfg = hasilCfg[r.hasil_rakit]||hasilCfg.ok;
-                      return(
-                        <div key={r.id} className="record-card">
-                          <div className="record-card-header">
-                            <div>
-                              <div className="record-size">🔧 {r.mold_size}</div>
-                              {r.mold_serial&&<div className="record-type">SN: {r.mold_serial}</div>}
-                            </div>
-                            <div style={{ textAlign:"right" }}>
-                              <div style={{ fontSize:11,color:"#999" }}>{r.date}</div>
-                              <div style={{ marginTop:4 }}>
-                                <span style={{ fontSize:11,padding:"2px 10px",borderRadius:20,fontWeight:600,background:cfg.bg,color:cfg.color }}>{cfg.label}</span>
-                              </div>
-                            </div>
-                          </div>
-                          {r.machine_code&&<div style={{ fontSize:12,fontWeight:600,color:"#1D9E75",marginBottom:6 }}><i className="ti ti-robot" style={{ fontSize:13,marginRight:4 }}></i>{r.machine_code}</div>}
-                          {r.parts_checked?.length>0&&(
-                            <div style={{ fontSize:11,color:"#666",marginBottom:4 }}>
-                              ✅ Komponen: <strong>{r.parts_checked.length}/{RAKIT_PARTS.length}</strong> dicek
-                              {r.parts_checked.length<RAKIT_PARTS.length&&(
-                                <span style={{ color:"#E8A020",marginLeft:4 }}>
-                                  (belum: {RAKIT_PARTS.filter(p=>!r.parts_checked.includes(p)).join(", ")})
-                                </span>
-                              )}
-                            </div>
-                          )}
-                          {r.kondisi_cavity&&<div style={{ fontSize:11,color:"#666",marginBottom:2 }}>Cavity: {r.kondisi_cavity}</div>}
-                          {r.kondisi_container&&<div style={{ fontSize:11,color:"#666",marginBottom:2 }}>Container: {r.kondisi_container}</div>}
-
-                          {r.catatan&&<div style={{ fontSize:11,color:"#666",marginBottom:4 }}>📝 {r.catatan}</div>}
-                          <div className="record-meta"><i className="ti ti-user" style={{ fontSize:12,marginRight:4 }}></i>{r.operator}</div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                
               </div>
             )}
 
