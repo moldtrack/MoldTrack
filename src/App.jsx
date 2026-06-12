@@ -778,7 +778,7 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
   },[]);
 
   const loadFirstCureData = useCallback(async () => {
-    const { data } = await supabase.from("first_cure_data").select("*").order("uploaded_at", { ascending: false });
+    const { data } = await supabase.from("first_cure_data").select("*").order("uploaded_at", { ascending: false }).range(0, 9999);
     if (data) { setFirstCureData(data); setFirstCureLoaded(true); }
   }, []);
 
