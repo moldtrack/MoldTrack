@@ -2991,9 +2991,18 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
                           setUploadFile(file);
                           setUploadMsg("Membaca file...");
                           try {
-                            const XLSX = await import("https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs");
-                            const buf = await file.arrayBuffer();
-                            const wb = XLSX.read(buf, {type:"array",cellDates:true});
+                            // Load SheetJS dari CDN jika belum ada
+                          if (!window.XLSX) {
+                            await new Promise((resolve, reject) => {
+                              const s = document.createElement("script");
+                              s.src = "https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js";
+                              s.onload = resolve; s.onerror = reject;
+                              document.head.appendChild(s);
+                            });
+                          }
+                          const XLSX = window.XLSX;
+                          const buf = await file.arrayBuffer();
+                          const wb = XLSX.read(buf, {type:"array",cellDates:true});
                             // Cari sheet yang relevan
                             const sheetName = wb.SheetNames.find(s=>s.toLowerCase().includes("first cure")||s.toLowerCase().includes("history")) || wb.SheetNames[0];
                             const ws = wb.Sheets[sheetName];
