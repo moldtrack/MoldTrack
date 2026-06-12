@@ -184,6 +184,7 @@ const canQCGate      = (r) => ["qcgate","analyst","adh","dh","admin"].includes(r
 const canRakit        = (r) => ["rakit","analyst","adh","dh","admin"].includes(r);
 const canNaik        = (r) => ["naik","analyst","adh","dh","admin"].includes(r);
 const canSH          = (r) => ["sh","analyst","adh","dh","admin"].includes(r);
+  const canAnalyst     = (r) => ["analyst","admin","dh","adh"].includes(r);
 const canEntry       = (r) => ["teknisi","analyst","adh","dh","admin"].includes(r);
 const canManageUsers = (r) => r === "admin";
 const getGrup = (username) => {
