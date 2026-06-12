@@ -2885,7 +2885,7 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
                                   ["DMGM",dmgm,"#FCEBEB","#791F1F"],
                                 ].filter(([,n])=>n>0).map(([l,n,bg,c])=>(
                                   <div key={l} style={{ padding:"4px 12px",borderRadius:20,background:bg,color:c,fontSize:11,fontWeight:700 }}>
-                                    {l}: {n}
+                                    {l}: {n} <span style={{ fontSize:10,opacity:0.75 }}>({results.length>0?Math.round(n/results.length*100):0}%)</span>
                                   </div>
                                 ))}
                               </div>
