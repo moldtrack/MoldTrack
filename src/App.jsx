@@ -3086,7 +3086,7 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
                             }).filter(Boolean);
 
                             // Cek duplikat vs data di Supabase
-                            const existingCodes = new Set((firstCureData.length > 0 ? firstCureData : RAKIT_DATA).map(r=>r.code));
+                            const existingCodes = new Set(firstCureData.map(r=>r.code));
                             const newRows = mapped.filter(r => !existingCodes.has(r.code));
                             const dupRows = mapped.filter(r => existingCodes.has(r.code));
 
