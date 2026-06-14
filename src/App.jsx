@@ -3020,39 +3020,39 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
                           {results.map((r,i)=>{
                             const fc = firstCureColor(r.first_cure);
                             return(
-                              <div key={i} className="record-card" style={{ marginBottom:10 }}>
-                                <div className="record-card-header">
+                              <div key={i} className="record-card" style={{ marginBottom:12,padding:14 }}>
+                                <div className="record-card-header" style={{ alignItems:"center" }}>
                                   <div>
-                                    <div className="record-size">{r.code}</div>
-                                    <div className="record-type">{r.ket} · {r.mc}</div>
+                                    <div style={{ fontSize:22,fontWeight:800,color:"#111",letterSpacing:0.3 }}>{r.code}</div>
+                                    <div style={{ fontSize:12,color:"#555",marginTop:2,fontWeight:600 }}>{r.ket} · {r.mc}</div>
                                   </div>
                                   <div style={{ textAlign:"right" }}>
-                                    <div style={{ fontSize:11,color:"#999",marginBottom:4 }}>{r.tgl}</div>
-                                    <span style={{ fontSize:11,padding:"2px 10px",borderRadius:20,fontWeight:700,background:fc.bg,color:fc.color }}>
+                                    <div style={{ fontSize:14,fontWeight:700,color:"#111",marginBottom:6 }}>📅 {r.tgl}</div>
+                                    <span style={{ fontSize:12,padding:"4px 12px",borderRadius:20,fontWeight:700,background:fc.bg,color:fc.color }}>
                                       {r.first_cure||"-"}
                                     </span>
                                   </div>
                                 </div>
 
                                 {/* Detail grid */}
-                                <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginTop:8,marginBottom:6 }}>
+                                <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginTop:12,marginBottom:8 }}>
                                   {[
-                                    ["Nilai Preload", r.nilai_preload||"-"],
-                                    ["VMC",           r.vmc||"-"],
-                                    ["Shim SR",       r.shim_sr||"-"],
-                                    ["Shim PL",       r.shim_pl||"-"],
-                                    ["Container",     r.container||"-"],
-                                    ["PIC",           r.pic||"-"],
+                                    ["Nilai preload",                    r.nilai_preload||"-"],
+                                    ["VMC",                              r.vmc||"-"],
+                                    ["Shim Sidering atas",               r.shim_sr||"-"],
+                                    ["Shim preload",                     r.shim_pl||"-"],
+                                    ["Container Maker-Type-No Container",r.container||"-"],
+                                    ["PIC-Shift/group",                  r.pic||"-"],
                                   ].map(([label,val])=>(
-                                    <div key={label} style={{ background:"#f9f9f9",borderRadius:6,padding:"6px 8px" }}>
-                                      <div style={{ fontSize:9,color:"#999",marginBottom:2 }}>{label}</div>
-                                      <div style={{ fontSize:12,fontWeight:600,color:"#111" }}>{val}</div>
+                                    <div key={label} style={{ background:"#F3F4F6",borderRadius:8,padding:"8px 10px" }}>
+                                      <div style={{ fontSize:11,color:"#444",marginBottom:4,fontWeight:700,lineHeight:1.2 }}>{label}</div>
+                                      <div style={{ fontSize:14,fontWeight:700,color:"#111" }}>{val}</div>
                                     </div>
                                   ))}
                                 </div>
 
                                 {r.keterangan&&(
-                                  <div style={{ fontSize:11,color:"#666",background:"#FEF3C7",padding:"4px 8px",borderRadius:6 }}>
+                                  <div style={{ fontSize:12,color:"#444",background:"#FEF3C7",padding:"6px 10px",borderRadius:6,fontWeight:600 }}>
                                     📝 {r.keterangan}
                                   </div>
                                 )}
