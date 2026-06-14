@@ -778,8 +778,23 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
   },[]);
 
   const loadFirstCureData = useCallback(async () => {
-    const { data } = await supabase.from("first_cure_data").select("*").order("uploaded_at", { ascending: false }).range(0, 9999);
-    if (data) { setFirstCureData(data); setFirstCureLoaded(true); }
+    // Fetch dengan pagination karena Supabase default limit 1000 row
+    let allData = [];
+    let from = 0;
+    const pageSize = 1000;
+    while (true) {
+      const { data, error } = await supabase
+        .from("first_cure_data")
+        .select("*")
+        .order("uploaded_at", { ascending: false })
+        .range(from, from + pageSize - 1);
+      if (error || !data || data.length === 0) break;
+      allData = allData.concat(data);
+      if (data.length < pageSize) break;
+      from += pageSize;
+    }
+    setFirstCureData(allData);
+    setFirstCureLoaded(true);
   }, []);
 
   const uploadFirstCureData = async (rows) => {
