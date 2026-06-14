@@ -716,6 +716,8 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
   const emptyRakitForm = () => ({ moldSize:"", moldSerial:"", plant:"", line:"", machine:"", partsChecked:[], kondisiCavity:"", kondisiContainer:"", hasilRakit:"ok", catatan:"", operator:"",  date:new Date().toISOString().slice(0,10) });
   const [rakitTab, setRakitTab]       = useState("search");
   const [rakitSearch, setRakitSearch] = useState("");
+  const [rakitFilterPic, setRakitFilterPic]     = useState("");
+  const [rakitFilterMonth, setRakitFilterMonth] = useState("");
   const [firstCureData, setFirstCureData]   = useState([]);
   const [firstCureLoaded, setFirstCureLoaded] = useState(false);
   const [uploadFile, setUploadFile]         = useState(null);
@@ -2860,9 +2862,38 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
                 {rakitTab==="search"&&(()=>{
                   const q = rakitSearch.trim().toUpperCase();
                   const sourceData = firstCureLoaded && firstCureData.length > 0 ? firstCureData : RAKIT_DATA;
-                  const results = q.length>=2
+                  // Filter awal by size/code/mc
+                  let preResults = q.length>=2
                     ? sourceData.filter(r=>r.size?.toUpperCase().includes(q)||r.code?.toUpperCase().includes(q)||r.mc?.toUpperCase().includes(q))
                     : [];
+                  // Filter tambahan by PIC dan bulan
+                  const fpic = rakitFilterPic.trim().toUpperCase();
+                  const results = preResults.filter(r=>{
+                    if (fpic && !(r.pic||"").toUpperCase().includes(fpic)) return false;
+                    if (rakitFilterMonth) {
+                      const tgl = (r.tgl||"").toString();
+                      // Format bisa: "22/11/2025", "2026-04-15", "22-Nov", "9-Apr"
+                      const monthMap = {jan:"01",feb:"02",mar:"03",apr:"04",may:"05",mei:"05",jun:"06",jul:"07",aug:"08",sep:"09",oct:"10",okt:"10",nov:"11",dec:"12",des:"12"};
+                      let monthNum = "";
+                      // Cek format ISO YYYY-MM-DD
+                      const m1 = tgl.match(/^\d{4}-(\d{2})-/);
+                      if (m1) monthNum = m1[1];
+                      // Cek format DD/MM/YYYY
+                      if (!monthNum) {
+                        const m2 = tgl.match(/^\d{1,2}\/(\d{1,2})\//);
+                        if (m2) monthNum = m2[1].padStart(2,"0");
+                      }
+                      // Cek format D-MMM (misal "9-Apr")
+                      if (!monthNum) {
+                        const m3 = tgl.match(/-(\w{3})$/i);
+                        if (m3) monthNum = monthMap[m3[1].toLowerCase()] || "";
+                      }
+                      if (monthNum !== rakitFilterMonth) return false;
+                    }
+                    return true;
+                  });
+                  // Daftar PIC unik untuk dropdown
+                  const uniquePics = [...new Set(preResults.map(r=>r.pic).filter(Boolean))].sort();
                   const firstCureColor = (fc) => {
                     if (!fc) return { bg:"#f0f0f0", color:"#999" };
                     const f = fc.toUpperCase();
@@ -2889,6 +2920,48 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
                         {rakitSearch&&<button onClick={()=>setRakitSearch("")}
                           style={{ position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:"#999",fontSize:16 }}>✕</button>}
                       </div>
+
+                      {/* Filter tambahan: PIC dan Bulan */}
+                      {q.length>=2&&preResults.length>0&&(
+                        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12 }}>
+                          <div>
+                            <label style={{ fontSize:10,color:"#999",fontWeight:600,display:"block",marginBottom:4 }}>👤 Filter PIC</label>
+                            <select value={rakitFilterPic} onChange={e=>setRakitFilterPic(e.target.value)}
+                              style={{ width:"100%",padding:"8px 10px",borderRadius:6,border:"1px solid #ddd",fontSize:12,background:"#fff" }}>
+                              <option value="">— Semua PIC —</option>
+                              {uniquePics.map(pic=>(<option key={pic} value={pic}>{pic}</option>))}
+                            </select>
+                          </div>
+                          <div>
+                            <label style={{ fontSize:10,color:"#999",fontWeight:600,display:"block",marginBottom:4 }}>📅 Filter Bulan</label>
+                            <select value={rakitFilterMonth} onChange={e=>setRakitFilterMonth(e.target.value)}
+                              style={{ width:"100%",padding:"8px 10px",borderRadius:6,border:"1px solid #ddd",fontSize:12,background:"#fff" }}>
+                              <option value="">— Semua Bulan —</option>
+                              <option value="01">Januari</option>
+                              <option value="02">Februari</option>
+                              <option value="03">Maret</option>
+                              <option value="04">April</option>
+                              <option value="05">Mei</option>
+                              <option value="06">Juni</option>
+                              <option value="07">Juli</option>
+                              <option value="08">Agustus</option>
+                              <option value="09">September</option>
+                              <option value="10">Oktober</option>
+                              <option value="11">November</option>
+                              <option value="12">Desember</option>
+                            </select>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Info filter aktif */}
+                      {(rakitFilterPic||rakitFilterMonth)&&(
+                        <div style={{ fontSize:11,color:"#5B21B6",marginBottom:8,padding:"6px 10px",background:"#EDE9FE",borderRadius:6,display:"flex",justifyContent:"space-between",alignItems:"center" }}>
+                          <div>🔎 Filter aktif: {rakitFilterPic&&<span>PIC=<strong>{rakitFilterPic}</strong></span>} {rakitFilterPic&&rakitFilterMonth&&" · "} {rakitFilterMonth&&<span>Bulan=<strong>{["","Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"][parseInt(rakitFilterMonth)]}</strong></span>}</div>
+                          <button onClick={()=>{setRakitFilterPic("");setRakitFilterMonth("");}}
+                            style={{ background:"none",border:"1px solid #8B5CF6",color:"#5B21B6",fontSize:10,padding:"2px 8px",borderRadius:4,cursor:"pointer",fontWeight:600 }}>Hapus Filter</button>
+                        </div>
+                      )}
 
                       {/* Info */}
                       {q.length<2&&(
