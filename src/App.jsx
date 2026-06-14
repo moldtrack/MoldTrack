@@ -2934,11 +2934,9 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
                         <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12 }}>
                           <div>
                             <label style={{ fontSize:10,color:"#999",fontWeight:600,display:"block",marginBottom:4 }}>👤 Filter PIC</label>
-                            <select value={rakitFilterPic} onChange={e=>setRakitFilterPic(e.target.value)}
-                              style={{ width:"100%",padding:"8px 10px",borderRadius:6,border:"1px solid #ddd",fontSize:12,background:"#fff" }}>
-                              <option value="">— Semua PIC —</option>
-                              {uniquePics.map(pic=>(<option key={pic} value={pic}>{pic}</option>))}
-                            </select>
+                            <input type="text" value={rakitFilterPic} onChange={e=>setRakitFilterPic(e.target.value)}
+                              placeholder="Ketik nama PIC..."
+                              style={{ width:"100%",padding:"8px 10px",borderRadius:6,border:"1px solid #ddd",fontSize:12,background:"#fff",boxSizing:"border-box" }} />
                           </div>
                           <div>
                             <label style={{ fontSize:10,color:"#999",fontWeight:600,display:"block",marginBottom:4 }}>📅 Filter Bulan</label>
