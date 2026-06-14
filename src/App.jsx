@@ -664,6 +664,8 @@ export default function App() {
     try {
       const s = localStorage.getItem("moldtrack_user");
       if (!s) return "dashboard";
+      const savedPage = localStorage.getItem("moldtrack_page");
+      if (savedPage) return savedPage;
       const u = JSON.parse(s);
       if (u.role==="teknisi")   return "entry";
       if (u.role==="persiapan") return "persiapan";
@@ -674,6 +676,11 @@ export default function App() {
       return "dashboard";
     } catch { return "dashboard"; }
   });
+
+  // Simpan page ke localStorage setiap kali berubah
+  useEffect(() => {
+    try { localStorage.setItem("moldtrack_page", page); } catch {}
+  }, [page]);
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(false);
   const [form, setForm]       = useState(emptyForm());
@@ -748,6 +755,7 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
   const handleLogout = () => {
     setCurrentUser(null);
     localStorage.removeItem("moldtrack_user");
+    localStorage.removeItem("moldtrack_page");
     setPage("dashboard");
   };
 
