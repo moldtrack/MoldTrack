@@ -2936,12 +2936,12 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
                             <label style={{ fontSize:10,color:"#999",fontWeight:600,display:"block",marginBottom:4 }}>👤 Filter PIC</label>
                             <input type="text" value={rakitFilterPic} onChange={e=>setRakitFilterPic(e.target.value)}
                               placeholder="Ketik nama PIC..."
-                              style={{ width:"100%",padding:"8px 10px",borderRadius:6,border:"1px solid #ddd",fontSize:12,background:"#fff",boxSizing:"border-box" }} />
+                              style={{ width:"100%",padding:"8px 10px",borderRadius:6,border:"1px solid #ddd",fontSize:12,background:"#fff",boxSizing:"border-box",color:"#111",outline:"none" }} />
                           </div>
                           <div>
                             <label style={{ fontSize:10,color:"#999",fontWeight:600,display:"block",marginBottom:4 }}>📅 Filter Bulan</label>
                             <select value={rakitFilterMonth} onChange={e=>setRakitFilterMonth(e.target.value)}
-                              style={{ width:"100%",padding:"8px 10px",borderRadius:6,border:"1px solid #ddd",fontSize:12,background:"#fff" }}>
+                              style={{ width:"100%",padding:"8px 10px",borderRadius:6,border:"1px solid #ddd",fontSize:12,background:"#fff",color:"#111",outline:"none" }}>
                               <option value="">— Semua Bulan —</option>
                               <option value="01">Januari</option>
                               <option value="02">Februari</option>
