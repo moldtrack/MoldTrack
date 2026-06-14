@@ -3027,7 +3027,6 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
                                     <div style={{ fontSize:12,color:"#555",marginTop:2,fontWeight:600 }}>{r.ket} · {r.mc}</div>
                                   </div>
                                   <div style={{ textAlign:"right" }}>
-                                    <div style={{ fontSize:14,fontWeight:700,color:"#111",marginBottom:6 }}>📅 {r.tgl}</div>
                                     <span style={{ fontSize:12,padding:"4px 12px",borderRadius:20,fontWeight:700,background:fc.bg,color:fc.color }}>
                                       {r.first_cure||"-"}
                                     </span>
@@ -3038,11 +3037,11 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
                                 <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginTop:12,marginBottom:8 }}>
                                   {[
                                     ["Nilai preload",                    r.nilai_preload||"-"],
-                                    ["VMC",                              r.vmc||"-"],
                                     ["Shim Sidering atas",               r.shim_sr||"-"],
                                     ["Shim preload",                     r.shim_pl||"-"],
-                                    ["Container Maker-Type-No Container",r.container||"-"],
-                                    ["PIC-Shift/group",                  r.pic||"-"],
+                                    ["Container (Maker, Type, No Container)", r.container||"-"],
+                                    ["Tgl rakit",                        r.tgl||"-"],
+                                    ["PIC/grup",                         r.pic||"-"],
                                   ].map(([label,val])=>(
                                     <div key={label} style={{ background:"#F3F4F6",borderRadius:8,padding:"8px 10px" }}>
                                       <div style={{ fontSize:11,color:"#444",marginBottom:4,fontWeight:700,lineHeight:1.2 }}>{label}</div>
