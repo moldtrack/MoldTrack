@@ -177,15 +177,15 @@ const exportToExcel = (records) => {
 };
 
 // role permissions
-const canDashboard   = (r) => ["analyst","adh","dh","admin"].includes(r);
-const canDatabase    = (r) => ["analyst","adh","dh","admin","teknisi","qcgate","naik","rakit","persiapan"].includes(r);
-const canPersiapan   = (r) => ["persiapan","analyst","adh","dh","admin"].includes(r);
-const canQCGate      = (r) => ["qcgate","analyst","adh","dh","admin"].includes(r);
-const canRakit        = (r) => ["rakit","analyst","adh","dh","admin"].includes(r);
-const canNaik        = (r) => ["naik","analyst","adh","dh","admin"].includes(r);
-const canSH          = (r) => ["sh","analyst","adh","dh","admin"].includes(r);
+const canDashboard   = (r) => r === "admin";
+const canDatabase    = (r) => r === "admin";
+const canPersiapan   = (r) => r === "admin";
+const canQCGate      = (r) => r === "admin";
+const canRakit        = (r) => true;
+const canNaik        = (r) => r === "admin";
+const canSH          = (r) => r === "admin";
   const canAnalyst     = (r) => ["analyst","admin","dh","adh"].includes(r);
-const canEntry       = (r) => ["teknisi","analyst","adh","dh","admin"].includes(r);
+const canEntry       = (r) => r === "admin";
 const canManageUsers = (r) => r === "admin";
 const getGrup = (username) => {
   if (!username) return null;
@@ -664,9 +664,11 @@ export default function App() {
     try {
       const s = localStorage.getItem("moldtrack_user");
       if (!s) return "dashboard";
+      const u = JSON.parse(s);
+      // Non-admin selalu ke rakit
+      if (u.role !== "admin") return "rakit";
       const savedPage = localStorage.getItem("moldtrack_page");
       if (savedPage) return savedPage;
-      const u = JSON.parse(s);
       if (u.role==="teknisi")   return "entry";
       if (u.role==="persiapan") return "persiapan";
       if (u.role==="qcgate")    return "qcgate";
@@ -1419,6 +1421,18 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
             )}
 
             {/* DASHBOARD */}
+            {/* Under Maintenance untuk non-admin yang akses halaman lain */}
+            {role !== "admin" && page !== "rakit" && (
+              <div style={{ textAlign:"center",padding:"80px 20px",color:"#666" }}>
+                <div style={{ fontSize:64,marginBottom:16 }}>🚧</div>
+                <div style={{ fontSize:22,fontWeight:700,color:"#111",marginBottom:8 }}>Under Maintenance</div>
+                <div style={{ fontSize:13,color:"#999",marginBottom:24 }}>Halaman ini sedang dalam pemeliharaan. Silakan akses Rakit Mold.</div>
+                <button onClick={()=>navTo("rakit")} style={{ padding:"10px 24px",background:"#1D9E75",color:"#fff",border:"none",borderRadius:8,fontWeight:600,fontSize:14,cursor:"pointer" }}>
+                  ← Kembali ke Rakit Mold
+                </button>
+              </div>
+            )}
+
             {page==="dashboard"&&canDashboard(role)&&(
               <div>
                 {/* FILTER PERIODE */}
