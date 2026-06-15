@@ -2894,7 +2894,7 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
                 {/* SEARCH TAB */}
                 {rakitTab==="search"&&(()=>{
                   const q = rakitSearch.trim().toUpperCase();
-                  const sourceData = firstCureLoaded && firstCureData.length > 0 ? firstCureData : RAKIT_DATA;
+                  const sourceData = firstCureData;
                   // Filter awal by size/code/mc
                   let preResults = q.length>=2
                     ? sourceData.filter(r=>r.size?.toUpperCase().includes(q)||r.code?.toUpperCase().includes(q)||r.mc?.toUpperCase().includes(q))
@@ -3033,7 +3033,7 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
                           <div style={{ fontSize:32,marginBottom:8 }}>🔍</div>
                           <div style={{ fontSize:13,fontWeight:600,marginBottom:4 }}>Cari Data First Cure</div>
                           <div style={{ fontSize:11 }}>Ketik size mold untuk melihat history data rakit & kalibrasi</div>
-                          <div style={{ marginTop:12,fontSize:11,color:"#bbb" }}>Total data: {sourceData.length} record · {[...new Set(sourceData.map(r=>r.size).filter(Boolean))].length} size {firstCureLoaded&&firstCureData.length>0?"(dari Supabase)":"(dari cache)"}</div>
+                          <div style={{ marginTop:12,fontSize:11,color:"#bbb" }}>Total data: {sourceData.length} record · {[...new Set(sourceData.map(r=>r.size).filter(Boolean))].length} size</div>
                         </div>
                       )}
 
@@ -3219,9 +3219,31 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
                               let size = "";
                               const m = code.match(/^([A-Za-z0-9]+)\s*[-–]\s*\d+/);
                               if (m) size = m[1].toUpperCase();
-                              // Format tanggal
+                              // Normalisasi tanggal ke format "DD-MMM" (cth: "22-Nov")
                               let tgl = getVal(r, colMap.tgl);
-                              if (tgl && tgl.includes("T")) tgl = tgl.split("T")[0]; // ISO date
+                              const monthShort = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+                              const toShortDate = (str) => {
+                                if (!str) return "";
+                                const s = String(str).trim();
+                                // Sudah format "DD-MMM" atau "D-MMM"
+                                let m = s.match(/^(\d{1,2})[-\s](\w{3})$/i);
+                                if (m) {
+                                  const monthIdx = monthShort.findIndex(mo=>mo.toLowerCase()===m[2].toLowerCase());
+                                  if (monthIdx >= 0) return parseInt(m[1])+"-"+monthShort[monthIdx];
+                                }
+                                // ISO "YYYY-MM-DDTHH..." atau "YYYY-MM-DD"
+                                m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+                                if (m) return parseInt(m[3])+"-"+monthShort[parseInt(m[2])-1];
+                                // DD/MM/YYYY
+                                m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+                                if (m) {
+                                  const mi = parseInt(m[2])-1;
+                                  if (mi >= 0 && mi < 12) return parseInt(m[1])+"-"+monthShort[mi];
+                                }
+                                // Date Excel serial number (cell sudah jadi string?) - skip
+                                return s;
+                              };
+                              tgl = toShortDate(tgl);
                               return {
                                 tgl, pic: getVal(r, colMap.pic), code, size,
                                 container: getVal(r, colMap.container),
