@@ -725,6 +725,7 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
   const [rakitSearch, setRakitSearch] = useState("");
   const [rakitFilterPic, setRakitFilterPic]     = useState("");
   const [rakitFilterMonth, setRakitFilterMonth] = useState("");
+  const [rakitFilterSort, setRakitFilterSort]   = useState("newest");
   const [firstCureData, setFirstCureData]   = useState([]);
   const [firstCureLoaded, setFirstCureLoaded] = useState(false);
   const [uploadFile, setUploadFile]         = useState(null);
@@ -2900,6 +2901,31 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
                     }
                     return true;
                   });
+                  // Helper: parse tanggal jadi timestamp untuk sorting
+                  const parseTglToTime = (tgl) => {
+                    if (!tgl) return 0;
+                    const s = tgl.toString().trim();
+                    const monthMap = {jan:0,feb:1,mar:2,apr:3,may:4,mei:4,jun:5,jul:6,aug:7,agu:7,sep:8,oct:9,okt:9,nov:10,dec:11,des:11};
+                    // ISO YYYY-MM-DD
+                    let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+                    if (m) return new Date(+m[1], +m[2]-1, +m[3]).getTime();
+                    // DD/MM/YYYY
+                    m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+                    if (m) return new Date(+m[3], +m[2]-1, +m[1]).getTime();
+                    // D-MMM (cth: "22-Nov" atau "9-Apr") - tahun diasumsikan 2026 (atau tahun terbaru)
+                    m = s.match(/^(\d{1,2})[-\s](\w{3})/i);
+                    if (m) {
+                      const month = monthMap[m[2].toLowerCase()];
+                      if (month !== undefined) return new Date(2026, month, +m[1]).getTime();
+                    }
+                    return 0;
+                  };
+                  // Sort hasil
+                  results.sort((a,b) => {
+                    const ta = parseTglToTime(a.tgl);
+                    const tb = parseTglToTime(b.tgl);
+                    return rakitFilterSort === "oldest" ? ta - tb : tb - ta;
+                  });
                   // Daftar PIC unik untuk dropdown
                   const uniquePics = [...new Set(preResults.map(r=>r.pic).filter(Boolean))].sort();
                   const firstCureColor = (fc) => {
@@ -2929,9 +2955,9 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
                           style={{ position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:"#999",fontSize:16 }}>✕</button>}
                       </div>
 
-                      {/* Filter tambahan: PIC dan Bulan */}
+                      {/* Filter tambahan: PIC, Bulan, Urutan */}
                       {q.length>=2&&preResults.length>0&&(
-                        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12 }}>
+                        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:12 }}>
                           <div>
                             <label style={{ fontSize:10,color:"#999",fontWeight:600,display:"block",marginBottom:4 }}>👤 Filter PIC</label>
                             <input type="text" value={rakitFilterPic} onChange={e=>setRakitFilterPic(e.target.value)}
@@ -2955,6 +2981,14 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
                               <option value="10">Oktober</option>
                               <option value="11">November</option>
                               <option value="12">Desember</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label style={{ fontSize:10,color:"#999",fontWeight:600,display:"block",marginBottom:4 }}>🔀 Urutan</label>
+                            <select value={rakitFilterSort} onChange={e=>setRakitFilterSort(e.target.value)}
+                              style={{ width:"100%",padding:"8px 10px",borderRadius:6,border:"1px solid #ddd",fontSize:12,background:"#fff",color:"#111",outline:"none" }}>
+                              <option value="newest">⬇️ Terbaru</option>
+                              <option value="oldest">⬆️ Terlama</option>
                             </select>
                           </div>
                         </div>
