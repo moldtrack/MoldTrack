@@ -1080,17 +1080,27 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
   const detailRec=records.find(r=>r.id===detailId);
   const sameSize=detailRec?records.filter(r=>r.mold_size===detailRec.mold_size&&r.id!==detailRec.id).slice(0,5):[];
 
-  // build nav items based on role
-  const navItems = [
-    ...(canDashboard(role)   ? [["dashboard","ti-layout-dashboard","Dashboard"]] : []),
-    ...(canSH(role)          ? [["shplan","ti-clipboard-list","Shift Plan"]] : []),
-    ...(canEntry(role)       ? [["entry","ti-plus","Action Problem"]] : []),
-    ...(canDatabase(role)    ? [["database","ti-database","Database"]] : []),
-    ...(canPersiapan(role)   ? [["persiapan","ti-package","Persiapan"]] : []),
-    ...(canQCGate(role)      ? [["qcgate","ti-clipboard-check","QC Gate"]] : []),
-    ...(canRakit(role)        ? [["rakit","ti-tools","Rakit Mold"]] : []),
-    ...(canNaik(role)        ? [["naik","ti-arrow-up","Naik Mold"]] : []),
-    ...(canManageUsers(role) ? [["users","ti-users","Users"]] : []),
+  // build nav items - tampilkan semua menu di sidebar untuk semua role
+  const navItems = role === "admin" ? [
+    ["dashboard","ti-layout-dashboard","Dashboard"],
+    ["shplan","ti-clipboard-list","Shift Plan"],
+    ["entry","ti-plus","Action Problem"],
+    ["database","ti-database","Database"],
+    ["persiapan","ti-package","Persiapan"],
+    ["qcgate","ti-clipboard-check","QC Gate"],
+    ["rakit","ti-tools","Rakit Mold"],
+    ["naik","ti-arrow-up","Naik Mold"],
+    ["users","ti-users","Users"],
+  ] : [
+    // Non-admin: tampilkan semua menu (tapi semua kecuali Rakit Mold akan under maintenance)
+    ["dashboard","ti-layout-dashboard","Dashboard"],
+    ["shplan","ti-clipboard-list","Shift Plan"],
+    ["entry","ti-plus","Action Problem"],
+    ["database","ti-database","Database"],
+    ["persiapan","ti-package","Persiapan"],
+    ["qcgate","ti-clipboard-check","QC Gate"],
+    ["rakit","ti-tools","Rakit Mold"],
+    ["naik","ti-arrow-up","Naik Mold"],
   ];
   // Reset tab ke "form" saat user navigasi ke halaman baru
   const navTo = (p) => {
