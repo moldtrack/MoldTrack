@@ -2895,10 +2895,10 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
                 {rakitTab==="search"&&(()=>{
                   const q = rakitSearch.trim().toUpperCase();
                   const sourceData = firstCureData;
-                  // Filter awal by size/code/mc
+                  // Jika tidak ada search query, tampilkan semua data
                   let preResults = q.length>=2
                     ? sourceData.filter(r=>r.size?.toUpperCase().includes(q)||r.code?.toUpperCase().includes(q)||r.mc?.toUpperCase().includes(q))
-                    : [];
+                    : sourceData;
                   // Filter tambahan by PIC dan bulan
                   const fpic = rakitFilterPic.trim().toUpperCase();
                   const results = preResults.filter(r=>{
@@ -2980,7 +2980,7 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
                       </div>
 
                       {/* Filter tambahan: PIC, Bulan, Urutan */}
-                      {q.length>=2&&preResults.length>0&&(
+                      {preResults.length>0&&(
                         <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:12 }}>
                           <div>
                             <label style={{ fontSize:10,color:"#999",fontWeight:600,display:"block",marginBottom:4 }}>👤 Filter PIC</label>
@@ -3027,13 +3027,12 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
                         </div>
                       )}
 
-                      {/* Info */}
-                      {q.length<2&&(
+                      {/* Info ketika data kosong */}
+                      {q.length<2&&sourceData.length===0&&(
                         <div style={{ textAlign:"center",padding:"32px 16px",color:"#999" }}>
-                          <div style={{ fontSize:32,marginBottom:8 }}>🔍</div>
-                          <div style={{ fontSize:13,fontWeight:600,marginBottom:4 }}>Cari Data First Cure</div>
-                          <div style={{ fontSize:11 }}>Ketik size mold untuk melihat history data rakit & kalibrasi</div>
-                          <div style={{ marginTop:12,fontSize:11,color:"#bbb" }}>Total data: {sourceData.length} record · {[...new Set(sourceData.map(r=>r.size).filter(Boolean))].length} size</div>
+                          <div style={{ fontSize:32,marginBottom:8 }}>📭</div>
+                          <div style={{ fontSize:13,fontWeight:600,marginBottom:4 }}>Belum Ada Data</div>
+                          <div style={{ fontSize:11 }}>Silakan upload file Excel di tab Upload Data terlebih dahulu</div>
                         </div>
                       )}
 
@@ -3047,7 +3046,7 @@ const RAKIT_PARTS = ["Cavity Atas","Cavity Bawah","Bead Ring Atas","Bead Ring Ba
                       {results.length>0&&(
                         <div>
                           <div style={{ fontSize:12,color:"#999",marginBottom:10 }}>
-                            {results.length} record ditemukan untuk "<strong>{q}</strong>"
+                            {q.length>=2 ? <span>{results.length} record ditemukan untuk "<strong>{q}</strong>"</span> : <span>Menampilkan {results.length} record</span>}
                           </div>
 
                           {/* Summary stat */}
